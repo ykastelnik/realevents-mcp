@@ -11,7 +11,7 @@ jobs:
     env:
       REALEVENTS_API_URL: https://realevents.co/api/v1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
