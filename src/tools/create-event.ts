@@ -30,8 +30,9 @@ export interface CreateEventInput {
 
 function pickAllowed(input: CreateEventInput): Record<string, unknown> {
   const event: Record<string, unknown> = {};
+  const source = input as unknown as Record<string, unknown>;
   for (const key of ALLOWED_KEYS) {
-    const value = (input as Record<string, unknown>)[key as AllowedKey];
+    const value = source[key as AllowedKey];
     if (value !== undefined && value !== null && value !== "") {
       event[key] = value;
     }

@@ -4,6 +4,7 @@ import { ManageTokenMissingError } from "./manage-token.js";
 const DEFAULT_PUBLIC_BASE = "https://realevents.co";
 
 export interface ToolResult {
+  [key: string]: unknown;
   content: { type: "text"; text: string }[];
   isError?: boolean;
 }

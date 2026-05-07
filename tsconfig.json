@@ -7,7 +7,6 @@
     "rootDir": "src",
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
     "declaration": true,
     "sourceMap": true,
     "esModuleInterop": true,

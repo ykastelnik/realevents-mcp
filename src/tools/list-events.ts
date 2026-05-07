@@ -17,7 +17,9 @@ export async function handleListPublicEvents(
   args: ListPublicEventsInput
 ): Promise<ToolResult> {
   return runTool(async () => {
-    const data = await apiCall<ApiDirectoryResponse>("GET", "/directory", { query: args });
+    const data = await apiCall<ApiDirectoryResponse>("GET", "/directory", {
+      query: args as Record<string, string | number | undefined>
+    });
     return ok(formatDirectory(data, publicBase()));
   });
 }
