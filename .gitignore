@@ -2,6 +2,11 @@ node_modules/
 dist/
 coverage/
 mcp-publisher
+# mcp-publisher tarball siblings (extracting in repo root clobbers files)
+mcp-publisher.tar.gz
+docs/modelcontextprotocol-io/
+LICENSE-Apache-2.0
+NOTICE
 .env
 .env.*
 !.env.example
