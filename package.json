@@ -1,0 +1,59 @@
+{
+  "name": "realevents-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for RealEvents.co - create and manage events from your AI assistant",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "realevents-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc && node scripts/add-shebang.js",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run test && npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "events",
+    "event-management",
+    "realevents",
+    "claude",
+    "cursor"
+  ],
+  "author": "RealEvents",
+  "license": "MIT",
+  "homepage": "https://realevents.co/mcp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ykastelnik/realevents-mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/ykastelnik/realevents-mcp/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@vitest/coverage-v8": "^1.6.0",
+    "typescript": "^5.4.0",
+    "undici": "^6.19.0",
+    "vitest": "^1.6.0"
+  }
+}
