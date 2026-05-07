@@ -45,19 +45,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-  publish-mcp-registry:
-    needs: publish-npm
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install mcp-publisher
-        run: |
-          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz
-          chmod +x mcp-publisher
-
-      - name: Publish to MCP Registry
-        run: ./mcp-publisher publish
+# MCP Registry publish is currently manual:
+#   ./mcp-publisher login github && ./mcp-publisher publish
+# Re-automate as a CI job when mcp-publisher supports OIDC authentication
+# from GitHub Actions natively. Tracked in the realevents.co tech backlog.
