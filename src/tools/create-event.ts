@@ -15,8 +15,6 @@ const ALLOWED_KEYS = [
   "organizer_email"
 ] as const;
 
-type AllowedKey = (typeof ALLOWED_KEYS)[number];
-
 export interface CreateEventInput {
   title: string;
   start_datetime: string;
@@ -32,8 +30,10 @@ function pickAllowed(input: CreateEventInput): Record<string, unknown> {
   const event: Record<string, unknown> = {};
   const source = input as unknown as Record<string, unknown>;
   for (const key of ALLOWED_KEYS) {
-    const value = source[key as AllowedKey];
+    // eslint-disable-next-line security/detect-object-injection -- key is bounded by ALLOWED_KEYS const array
+    const value = source[key];
     if (value !== undefined && value !== null && value !== "") {
+      // eslint-disable-next-line security/detect-object-injection -- key is bounded by ALLOWED_KEYS const array
       event[key] = value;
     }
   }
@@ -70,10 +70,7 @@ const inputSchema = {
     .optional()
     .describe("Event format. Default: in_person"),
   description: z.string().optional().describe("Event description (supports HTML)"),
-  location: z
-    .string()
-    .optional()
-    .describe("Physical location (for in_person or hybrid events)"),
+  location: z.string().optional().describe("Physical location (for in_person or hybrid events)"),
   virtual_link: z
     .string()
     .optional()

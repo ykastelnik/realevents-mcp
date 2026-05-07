@@ -1,8 +1,6 @@
 export class ManageTokenMissingError extends Error {
   constructor() {
-    super(
-      "Provide manage_token or set REALEVENTS_MANAGE_TOKEN in your MCP server config."
-    );
+    super("Provide manage_token or set REALEVENTS_MANAGE_TOKEN in your MCP server config.");
     this.name = "ManageTokenMissingError";
   }
 }

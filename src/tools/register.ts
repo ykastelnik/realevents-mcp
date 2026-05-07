@@ -21,17 +21,16 @@ function buildRegistrationBody(input: RegisterInput): Record<string, unknown> {
 
 export async function handleRegisterForEvent(input: RegisterInput): Promise<ToolResult> {
   return runTool(async () => {
-    const data = await apiCall<ApiRegisterResponse>(
-      "POST",
-      `/events/${input.slug}/registrations`,
-      { body: { registration: buildRegistrationBody(input) } }
-    );
+    const data = await apiCall<ApiRegisterResponse>("POST", `/events/${input.slug}/registrations`, {
+      body: { registration: buildRegistrationBody(input) }
+    });
 
     const namePart = [data.registration.first_name, data.registration.last_name]
       .filter(Boolean)
       .join(" ")
       .trim();
-    const identity = namePart.length > 0 ? `${namePart} (${data.registration.email})` : data.registration.email;
+    const identity =
+      namePart.length > 0 ? `${namePart} (${data.registration.email})` : data.registration.email;
 
     const lines: string[] = [
       `${identity} is registered for "${data.event.title}".`,

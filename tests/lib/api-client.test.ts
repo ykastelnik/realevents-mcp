@@ -85,7 +85,10 @@ describe("apiCall", () => {
     const result = await apiCall("GET", "/directory", {
       query: { search: "tech", format: "virtual", page: 2 }
     });
-    expect(result).toEqual({ events: [], meta: { page: 2, per_page: 12, total: 0, total_pages: 0 } });
+    expect(result).toEqual({
+      events: [],
+      meta: { page: 2, per_page: 12, total: 0, total_pages: 0 }
+    });
   });
 
   it("omits undefined and empty query params", async () => {
@@ -105,9 +108,7 @@ describe("apiCall", () => {
       .intercept({ method: "POST", path: "/api/v1/events" })
       .reply(422, { error: "Title can't be blank" });
 
-    await expect(apiCall("POST", "/events", { body: {} })).rejects.toThrow(
-      "Title can't be blank"
-    );
+    await expect(apiCall("POST", "/events", { body: {} })).rejects.toThrow("Title can't be blank");
     await expect(apiCall("POST", "/events", { body: {} })).rejects.toBeInstanceOf(ApiError);
   });
 

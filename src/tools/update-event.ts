@@ -43,13 +43,18 @@ export interface UpdateEventInput {
   notify_on_registration?: boolean;
 }
 
-function pickUpdatable(input: UpdateEventInput): { keys: UpdatableKey[]; body: Record<string, unknown> } {
+function pickUpdatable(input: UpdateEventInput): {
+  keys: UpdatableKey[];
+  body: Record<string, unknown>;
+} {
   const keys: UpdatableKey[] = [];
   const body: Record<string, unknown> = {};
   for (const key of UPDATABLE_KEYS) {
+    // eslint-disable-next-line security/detect-object-injection -- key is bounded by UPDATABLE_KEYS const array
     const value = (input as Record<string, unknown>)[key];
     if (value !== undefined && value !== null && value !== "") {
       keys.push(key);
+      // eslint-disable-next-line security/detect-object-injection -- key is bounded by UPDATABLE_KEYS const array
       body[key] = value;
     }
   }

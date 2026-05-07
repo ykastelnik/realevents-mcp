@@ -1,8 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  ManageTokenMissingError,
-  resolveManageToken
-} from "../../src/lib/manage-token.js";
+import { ManageTokenMissingError, resolveManageToken } from "../../src/lib/manage-token.js";
 
 const ENV_KEY = "REALEVENTS_MANAGE_TOKEN";
 

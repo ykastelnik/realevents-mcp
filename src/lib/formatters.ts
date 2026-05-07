@@ -1,8 +1,4 @@
-import type {
-  ApiDirectoryResponse,
-  ApiEvent,
-  ApiRegistration
-} from "../types.js";
+import type { ApiDirectoryResponse, ApiEvent, ApiRegistration } from "../types.js";
 
 const ENTITY_MAP: Record<string, string> = {
   "&amp;": "&",
@@ -21,8 +17,14 @@ export function stripHtml(input: string | null | undefined): string {
   out = out.replace(/<\s*br\s*\/?\s*>/gi, "\n");
   out = out.replace(/<\/p>/gi, "\n");
   out = out.replace(/<[^>]+>/g, "");
-  out = out.replace(/&[a-zA-Z#0-9]+;/g, (match) => ENTITY_MAP[match] ?? match);
-  return out.replace(/\n{3,}/g, "\n\n").replace(/\n+$/g, "").trim();
+  out = out.replace(/&[a-zA-Z#0-9]+;/g, (match) => {
+    // eslint-disable-next-line security/detect-object-injection -- ENTITY_MAP is a closed lookup table, fallback is the raw match
+    return ENTITY_MAP[match] ?? match;
+  });
+  return out
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\n+$/g, "")
+    .trim();
 }
 
 export function formatDate(input: string | null | undefined): string {

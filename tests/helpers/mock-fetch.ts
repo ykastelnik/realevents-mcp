@@ -1,9 +1,4 @@
-import {
-  MockAgent,
-  setGlobalDispatcher,
-  getGlobalDispatcher,
-  type Dispatcher
-} from "undici";
+import { MockAgent, setGlobalDispatcher, getGlobalDispatcher, type Dispatcher } from "undici";
 import { afterEach, beforeEach } from "vitest";
 import type { ApiEvent, ApiRegistration } from "../../src/types.js";
 

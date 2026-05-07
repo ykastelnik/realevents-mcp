@@ -30,7 +30,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error("Fatal: failed to start realevents-mcp:", err);
+  process.stderr.write(`Fatal: failed to start realevents-mcp: ${err}\n`);
   process.exit(1);
 });

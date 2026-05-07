@@ -13,9 +13,7 @@ export interface ListPublicEventsInput {
   per_page?: number;
 }
 
-export async function handleListPublicEvents(
-  args: ListPublicEventsInput
-): Promise<ToolResult> {
+export async function handleListPublicEvents(args: ListPublicEventsInput): Promise<ToolResult> {
   return runTool(async () => {
     const data = await apiCall<ApiDirectoryResponse>("GET", "/directory", {
       query: args as Record<string, string | number | undefined>
@@ -25,26 +23,11 @@ export async function handleListPublicEvents(
 }
 
 const inputSchema = {
-  format: z
-    .enum(["in_person", "virtual", "hybrid"])
-    .optional()
-    .describe("Filter by event format"),
-  search: z
-    .string()
-    .optional()
-    .describe("Search events by title (partial match)"),
-  date: z
-    .enum(["today", "this_week", "this_month"])
-    .optional()
-    .describe("Filter by date range"),
+  format: z.enum(["in_person", "virtual", "hybrid"]).optional().describe("Filter by event format"),
+  search: z.string().optional().describe("Search events by title (partial match)"),
+  date: z.enum(["today", "this_week", "this_month"]).optional().describe("Filter by date range"),
   page: z.number().int().min(1).optional().describe("Page number, 1-indexed"),
-  per_page: z
-    .number()
-    .int()
-    .min(1)
-    .max(50)
-    .optional()
-    .describe("Items per page, max 50")
+  per_page: z.number().int().min(1).max(50).optional().describe("Items per page, max 50")
 };
 
 export function registerListPublicEvents(server: McpServer): void {

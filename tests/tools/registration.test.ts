@@ -27,12 +27,14 @@ describe("tool registration", () => {
     ];
 
     for (const { fn, name, required } of registrants) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      fn(server as any);
+      fn(server as never);
       const calls = server.registerTool.mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall).toBeDefined();
-      const [toolName, config] = lastCall as [string, { description: string; inputSchema: Record<string, unknown> }];
+      const [toolName, config] = lastCall as [
+        string,
+        { description: string; inputSchema: Record<string, unknown> }
+      ];
       expect(toolName).toBe(name);
       expect(typeof config.description).toBe("string");
       expect(config.description.length).toBeGreaterThan(20);

@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { handleGetEvent } from "../../src/tools/get-event.js";
-import {
-  makeEvent,
-  setupMockApi,
-  TEST_API_HOST,
-  textOf
-} from "../helpers/mock-fetch.js";
+import { makeEvent, setupMockApi, TEST_API_HOST, textOf } from "../helpers/mock-fetch.js";
 
 describe("get_event tool", () => {
   const ctx = setupMockApi();
