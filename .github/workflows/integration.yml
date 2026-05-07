@@ -8,6 +8,8 @@ on:
 jobs:
   smoke-test:
     runs-on: ubuntu-latest
+    env:
+      REALEVENTS_API_URL: https://realevents.co/api/v1
     steps:
       - uses: actions/checkout@v4
 
@@ -19,27 +21,41 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-      - name: tools/list smoke test
+      - name: Make runner script executable
+        run: chmod +x scripts/run-prompt.sh
+
+      - name: tools/list returns 6 tools
         run: |
           (
             echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}'
             echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
             echo '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
-          ) | node dist/index.js > output.txt
-          cat output.txt
-          tail -1 output.txt | jq -e '.result.tools | length == 6'
+          ) | node dist/index.js | tail -1 | jq -e '.result.tools | length == 6'
 
-      - name: get_event smoke test against production
-        env:
-          REALEVENTS_API_URL: https://realevents.co/api/v1
+      - name: P1 list_public_events (no filter)
         run: |
-          (
-            echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}'
-            echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
-            echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_event","arguments":{"slug":"realevents-mcp-smoke-test"}}}'
-          ) | node dist/index.js > result.txt
-          cat result.txt
-          tail -1 result.txt | jq -e '.result.content[0].text | length > 0'
+          OUT=$(./scripts/run-prompt.sh '{"name":"list_public_events","arguments":{}}')
+          echo "$OUT"
+          echo "$OUT" | grep -qE 'Upcoming events|No events found' || (echo "FAIL: unexpected output"; exit 1)
+
+      - name: P2 list_public_events (search=tech)
+        run: |
+          OUT=$(./scripts/run-prompt.sh '{"name":"list_public_events","arguments":{"search":"tech"}}')
+          echo "$OUT"
+          echo "$OUT" | grep -qE 'Upcoming events|No events found' || (echo "FAIL: unexpected output"; exit 1)
+
+      - name: P3 list_public_events (format=virtual, date=this_week)
+        run: |
+          OUT=$(./scripts/run-prompt.sh '{"name":"list_public_events","arguments":{"format":"virtual","date":"this_week"}}')
+          echo "$OUT"
+          echo "$OUT" | grep -qE 'Upcoming events|No events found' || (echo "FAIL: unexpected output"; exit 1)
+
+      - name: P4 get_event (smoke event)
+        run: |
+          OUT=$(./scripts/run-prompt.sh '{"name":"get_event","arguments":{"slug":"realevents-mcp-smoke-test"}}')
+          echo "$OUT"
+          echo "$OUT" | grep -q 'RealEvents MCP smoke test' || (echo "FAIL: smoke event not found"; exit 1)
+          echo "$OUT" | grep -q 'Status: published' || (echo "FAIL: smoke event not published"; exit 1)
 
       - name: Notify on failure
         if: failure()
