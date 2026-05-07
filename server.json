@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ykastelnik/realevents",
+  "description": "Create and manage events in seconds from your AI assistant. No account needed.",
+  "repository": {
+    "url": "https://github.com/ykastelnik/realevents-mcp",
+    "source": "github"
+  },
+  "version": "1.0.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "realevents-mcp",
+      "version": "1.0.1",
+      "transport": { "type": "stdio" }
+    }
+  ]
+}
