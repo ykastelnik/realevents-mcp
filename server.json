@@ -6,12 +6,12 @@
     "url": "https://github.com/ykastelnik/realevents-mcp",
     "source": "github"
   },
-  "version": "1.0.3",
+  "version": "1.0.4",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "realevents-mcp",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "transport": { "type": "stdio" }
     }
   ]

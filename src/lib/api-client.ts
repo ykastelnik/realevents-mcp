@@ -1,4 +1,25 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 const DEFAULT_BASE_URL = "https://realevents.co/api/v1";
+
+function readPackageVersion(): string {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const pkgPath = join(here, "..", "..", "package.json");
+    const raw = readFileSync(pkgPath, "utf8");
+    const parsed = JSON.parse(raw) as { version?: unknown };
+    if (typeof parsed.version === "string" && parsed.version.length > 0) {
+      return parsed.version;
+    }
+  } catch {
+    // ignore, fall through
+  }
+  return "0.0.0";
+}
+
+const CLIENT_HEADER = `realevents-mcp/${readPackageVersion()}`;
 
 export class ApiError extends Error {
   readonly status: number | undefined;
@@ -58,7 +79,11 @@ export async function apiCall<T = unknown>(
   const url = `${getBaseUrl()}${path}${buildQueryString(options.query)}`;
   const init: RequestInit = {
     method,
-    headers: { "Content-Type": "application/json", Accept: "application/json" }
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-RealEvents-Client": CLIENT_HEADER
+    }
   };
   if (options.body !== undefined) {
     init.body = JSON.stringify(options.body);

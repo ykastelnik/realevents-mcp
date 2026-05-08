@@ -138,4 +138,19 @@ describe("apiCall", () => {
 
     await expect(apiCall("GET", "/network-fail")).rejects.toThrow(/Network error/);
   });
+
+  it("sends X-RealEvents-Client header identifying the MCP client and version", async () => {
+    agent
+      .get("http://localhost:3000")
+      .intercept({
+        method: "GET",
+        path: "/api/v1/ping",
+        headers: (headers: Record<string, string>) =>
+          /^realevents-mcp\/\d+\.\d+\.\d+$/.test(headers["x-realevents-client"] ?? "")
+      })
+      .reply(200, { ok: true });
+
+    const result = await apiCall("GET", "/ping");
+    expect(result).toEqual({ ok: true });
+  });
 });
