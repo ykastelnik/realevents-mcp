@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { apiCall } from "../../src/lib/api-client.js";
 import { setupMockApi, TEST_API_HOST } from "./mock-fetch.js";
 
@@ -7,10 +7,12 @@ import { setupMockApi, TEST_API_HOST } from "./mock-fetch.js";
 // was making real network calls to whatever happened to listen on localhost:3000.
 // These tests pin the two guarantees the harness must provide, so a future runtime
 // change fails here loudly instead of turning the whole suite into a no-op.
+// Captured at module load, before setupMockApi's beforeEach ever runs, so it is
+// genuinely the runtime's own fetch and not a stub from an earlier test.
+const realFetchAtModuleLoad = globalThis.fetch;
+
 describe("mock-fetch harness", () => {
-  // Captured at module load, before setupMockApi's beforeEach ever runs, so it is
-  // genuinely the runtime's own fetch and not a stub from an earlier test.
-  const realFetchBeforeSuite = globalThis.fetch;
+  const realFetchBeforeSuite = realFetchAtModuleLoad;
   const ctx = setupMockApi();
 
   it("throws on a request that no interceptor matched, instead of hitting the network", async () => {
@@ -40,11 +42,17 @@ describe("mock-fetch harness", () => {
     await expect(apiCall("GET", "/events/once")).rejects.toThrow(/No mock interceptor matched/);
   });
 
-  it("restores the original fetch after each test rather than leaking the stub", async () => {
-    // Capture the stub installed for THIS test, then assert the afterEach hook of the
-    // previous test already swapped it back: the stub must be a fresh function each
-    // time, never the same object leaking across tests.
-    const stubbedDuringTest = globalThis.fetch;
-    expect(stubbedDuringTest).not.toBe(realFetchBeforeSuite);
+  it("installs a stub for the duration of a test", () => {
+    expect(globalThis.fetch).not.toBe(realFetchBeforeSuite);
   });
+});
+
+// Registered OUTSIDE the describe, so it runs after setupMockApi's afterEach has
+// had its final chance to restore. Asserting restoration from inside a test cannot
+// work: the stub is installed for the whole test body, so such an assertion passes
+// whether or not afterEach ever puts the real fetch back. A leaked stub would let a
+// later test file run against a stale interceptor set with nothing catching it -
+// the same silent-harness class of failure this file exists to prevent.
+afterAll(() => {
+  expect(globalThis.fetch).toBe(realFetchAtModuleLoad);
 });

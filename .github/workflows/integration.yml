@@ -102,13 +102,17 @@ jobs:
           echo "$STATS" | grep -q 'Page views:' || (echo "FAIL: stats missing page views"; exit 1)
           echo "$STATS" | grep -qE 'NaN|Infinity' && (echo "FAIL: stats rendered a non-number"; exit 1)
 
+          # NEVER echo the guest list or the comment thread. This repo is public, so
+          # Actions logs are world-readable, and these two tools render real
+          # production guests: full names, email addresses, their notes, and
+          # guest-authored comment bodies. GitHub masks the token, not the PII behind
+          # it. The grep assertions below read the variable directly, so the step
+          # still gates correctly without ever printing the payload.
           GUESTS=$(./scripts/run-prompt.sh "{\"name\":\"list_registrations\",\"arguments\":{\"manage_token\":\"$SMOKE_MANAGE_TOKEN\"}}")
-          echo "$GUESTS"
-          echo "$GUESTS" | grep -qE 'registrations for|No registrations' || (echo "FAIL: unexpected guest list output"; exit 1)
+          echo "$GUESTS" | grep -qE 'registrations for|No registrations' || (echo "FAIL: unexpected guest list output (payload withheld: contains guest PII)"; exit 1)
 
           COMMENTS=$(./scripts/run-prompt.sh "{\"name\":\"list_comments\",\"arguments\":{\"manage_token\":\"$SMOKE_MANAGE_TOKEN\"}}")
-          echo "$COMMENTS"
-          echo "$COMMENTS" | grep -qE 'comment|No comments|not enabled' || (echo "FAIL: unexpected comments output"; exit 1)
+          echo "$COMMENTS" | grep -qE 'comment|No comments|not enabled' || (echo "FAIL: unexpected comments output (payload withheld: contains guest content)"; exit 1)
 
       - name: Notify on failure
         if: failure()

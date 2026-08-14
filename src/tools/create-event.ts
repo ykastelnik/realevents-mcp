@@ -51,7 +51,11 @@ export async function handleCreateEvent(input: CreateEventInput): Promise<ToolRe
     const base = publicBase();
     const lines = [
       `Event "${data.event.title}" created successfully.`,
-      `Starts: ${formatDate(data.event.start_datetime)}`
+      // Formatted in the EVENT's zone, not the host's: printing the host's clock
+      // here contradicted the Timezone line directly below it (a 19:00 New York
+      // event confirmed as "1:00 AM GMT+2"), which is the very confusion sending
+      // `timezone` was meant to end.
+      `Starts: ${formatDate(data.event.start_datetime, data.event.timezone)}`
     ];
     // Echo the stored zone so a wrong one is visible immediately, rather than
     // surfacing later as an event page showing the wrong local hour.

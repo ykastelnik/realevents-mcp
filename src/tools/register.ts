@@ -35,8 +35,9 @@ function buildRegistrationBody(input: RegisterInput): Record<string, unknown> {
 
 export async function handleRegisterForEvent(input: RegisterInput): Promise<ToolResult> {
   return runTool(async () => {
+    const sent = buildRegistrationBody(input);
     const data = await apiCall<ApiRegisterResponse>("POST", `/events/${input.slug}/registrations`, {
-      body: { registration: buildRegistrationBody(input) }
+      body: { registration: sent }
     });
 
     const namePart = [data.registration.first_name, data.registration.last_name]
@@ -56,9 +57,20 @@ export async function handleRegisterForEvent(input: RegisterInput): Promise<Tool
 
     const lines: string[] = [`${identity} ${verb}.`, `Status: ${status}`];
 
-    const plusOnes = data.registration.plus_ones_count ?? 0;
+    // The PUBLIC register endpoint's registration_json is
+    // {id, email, first_name, last_name, status, response_note} - it does NOT echo
+    // plus-ones (only the manage payload does). Reading them off the response meant
+    // this line never rendered, so a booked party of three was confirmed with no
+    // mention of the guests. Fall back to what was SENT: the call returned 201, so
+    // the API accepted exactly that count, and `sent` already carries the
+    // status-gating (plus-ones are stripped on maybe/declined).
+    const plusOnes = data.registration.plus_ones_count ?? (sent["plus_ones_count"] as number) ?? 0;
     if (plusOnes > 0) {
-      const names = (data.registration.plus_one_names ?? []).filter(Boolean);
+      const names = (
+        data.registration.plus_one_names ??
+        (sent["plus_one_names"] as string[]) ??
+        []
+      ).filter(Boolean);
       const suffix = names.length > 0 ? ` (${names.join(", ")})` : "";
       lines.push(`Bringing: +${plusOnes}${suffix}`);
     }

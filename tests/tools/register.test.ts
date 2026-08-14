@@ -128,8 +128,13 @@ describe("register_for_event tool", () => {
           }
         })
       })
+      // The PUBLIC register endpoint's registration_json is exactly
+      // {id, email, first_name, last_name, status, response_note} (+ the token).
+      // It does NOT echo plus-ones - only the manage payload does. Mocking them
+      // here made the "+2" assertion pass against a payload the API never sends,
+      // so the tool's own confirmation silently dropped every booked party.
       .reply(201, {
-        registration: makeRegistration({ plus_ones_count: 2, plus_one_names: ["Luc", "Zoe"] }),
+        registration: makeRegistration({ first_name: "Ana", response_note: null }),
         event: makeEvent({ slug: "test" })
       });
 
@@ -143,7 +148,58 @@ describe("register_for_event tool", () => {
     });
 
     expect(result.isError).toBeFalsy();
-    expect(textOf(result)).toContain("+2");
+    const text = textOf(result);
+    // Echoed from what was accepted, since the response cannot tell us.
+    expect(text).toContain("+2");
+    expect(text).toContain("Luc");
+    expect(text).toContain("Zoe");
+  });
+
+  it("reports the party size even when the organizer collects no names", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "POST", path: "/api/v1/events/test/registrations" })
+      .reply(201, {
+        registration: makeRegistration({ first_name: "Ana" }),
+        event: makeEvent({ slug: "test" })
+      });
+
+    const text = textOf(
+      await handleRegisterForEvent({
+        slug: "test",
+        email: "x@y.com",
+        first_name: "Ana",
+        status: "confirmed",
+        plus_ones_count: 3
+      })
+    );
+
+    expect(text).toContain("+3");
+  });
+
+  it("does not claim a party on a maybe response, where plus-ones are not sent", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "POST", path: "/api/v1/events/test/registrations" })
+      .reply(201, {
+        registration: makeRegistration({ first_name: "Ana", status: "maybe" }),
+        event: makeEvent({ slug: "test" })
+      });
+
+    const text = textOf(
+      await handleRegisterForEvent({
+        slug: "test",
+        email: "x@y.com",
+        first_name: "Ana",
+        status: "maybe",
+        plus_ones_count: 2
+      })
+    );
+
+    // Match the Bringing line specifically: a bare "+2" also appears in the
+    // timezone offset ("GMT+2"), which would make this assertion fail for a
+    // reason that has nothing to do with plus-ones.
+    expect(text).not.toMatch(/Bringing:/);
   });
 
   // The API rejects a positive plus-ones count on any non-confirmed status. Sending
