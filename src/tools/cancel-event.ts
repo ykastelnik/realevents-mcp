@@ -24,7 +24,15 @@ export async function handleCancelEvent(input: CancelEventInput): Promise<ToolRe
         "so guests who follow an old link understand what happened.",
         "To reinstate it, use update_event with status 'published'.",
         "",
-        `Public link: ${publicBase()}/e/${data.event.slug}`
+        // Assistants were inventing "use the Rails console or admin" here, which is
+        // wrong advice for an organizer. Deleting is deliberately not an MCP tool
+        // (it destroys the guest list and comments irreversibly), but it IS a normal
+        // button on the manage page - so name the real place.
+        "To delete it permanently instead, open the manage page and use Delete there.",
+        "That also removes the guest list and any comments, and cannot be undone.",
+        "",
+        `Public link: ${publicBase()}/e/${data.event.slug}`,
+        `Manage page: ${publicBase()}/manage/${token}`
       ].join("\n")
     );
   });

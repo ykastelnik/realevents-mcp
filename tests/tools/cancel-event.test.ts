@@ -44,6 +44,29 @@ describe("cancel_event tool", () => {
     expect(textOf(result)).toMatch(/not deleted|still|remains/i);
   });
 
+  // Assistants were telling organizers to delete "from the Rails console or admin".
+  // Deleting is deliberately not an MCP tool, but it is a normal button on the
+  // manage page, so the result must point at the real place.
+  it("points at the manage page for deletion, not a console", () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "PATCH", path: "/api/v1/manage/tok" })
+      .reply(200, {
+        event: makeEvent({ status: "cancelled" }),
+        public_url: "/e/x",
+        manage_url: "/manage/tok"
+      });
+
+    return handleCancelEvent({ manage_token: "tok" }).then((result) => {
+      const text = textOf(result);
+      // Match the GUIDANCE sentence, not the "Manage page:" link label - a bare
+      // /manage page/i also matches the link, so it passed with the advice deleted.
+      expect(text).toMatch(/to delete it permanently/i);
+      expect(text).toContain("/manage/tok");
+      expect(text).not.toMatch(/rails console|admin panel/i);
+    });
+  });
+
   it("returns isError when the manage token is missing", async () => {
     const result = await handleCancelEvent({});
     expect(result.isError).toBe(true);
