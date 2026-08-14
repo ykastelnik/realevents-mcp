@@ -1,32 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { MockAgent, setGlobalDispatcher, getGlobalDispatcher, type Dispatcher } from "undici";
+import { describe, expect, it } from "vitest";
 import { apiCall, ApiError } from "../../src/lib/api-client.js";
-
-const BASE = "http://localhost:3000/api/v1";
+import { setupMockApi } from "../helpers/mock-fetch.js";
 
 describe("apiCall", () => {
-  let agent: MockAgent;
-  let originalDispatcher: Dispatcher;
-  let originalEnv: string | undefined;
-
-  beforeEach(() => {
-    originalDispatcher = getGlobalDispatcher();
-    originalEnv = process.env.REALEVENTS_API_URL;
-    process.env.REALEVENTS_API_URL = BASE;
-    agent = new MockAgent();
-    agent.disableNetConnect();
-    setGlobalDispatcher(agent);
-  });
-
-  afterEach(async () => {
-    await agent.close();
-    setGlobalDispatcher(originalDispatcher);
-    if (originalEnv === undefined) {
-      delete process.env.REALEVENTS_API_URL;
-    } else {
-      process.env.REALEVENTS_API_URL = originalEnv;
-    }
-  });
+  // Shares the fetch-stubbing harness with the tool tests. See mock-fetch.ts for
+  // why undici's MockAgent is no longer usable here.
+  const ctx = setupMockApi();
+  const agent = { get: (origin: string) => ctx.agent.get(origin) };
 
   it("returns parsed JSON on 200", async () => {
     agent
