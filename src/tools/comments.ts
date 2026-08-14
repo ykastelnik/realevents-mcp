@@ -6,13 +6,21 @@ import { resolveManageToken } from "../lib/manage-token.js";
 import { fail, ok, runTool, type ToolResult } from "../lib/tool-runtime.js";
 import type { ApiCommentThread, ApiHostComment, ApiThreadComment } from "../types.js";
 
-// comments_live? is (global event_comments flag AND the event's own allow_comments),
-// and the global flag is on in production. So a 403 here means, in practice, that
-// this organizer has not switched comments on for this event. Saying "Forbidden"
-// would send the caller hunting for a permissions problem that does not exist.
+// comments_live? is (the global event_comments flag AND the event's own
+// allow_comments). The global flag was verified ON in production when these tools
+// shipped, so a 403 in practice means this organizer has not switched comments on
+// for their event - the case update_event fixes. Saying "Forbidden" would send the
+// caller hunting for a permissions problem that does not exist.
+//
+// The message deliberately does not promise the fix will work: a 403 alone cannot
+// tell the two causes apart, so it tells the caller to stop rather than retry if
+// update_event succeeds and the thread is still unavailable. That keeps the advice
+// honest if the flag is ever switched back off.
 const COMMENTS_OFF =
-  "Comments are not enabled for this event. Turn them on with " +
-  "update_event (allow_comments: true), then try again.";
+  "The comment thread is not available for this event. Usually the organizer has " +
+  "not enabled it: turn it on with update_event (allow_comments: true), then try " +
+  "again. If update_event reports success and this still fails, comments are off " +
+  "account-wide - do not keep retrying.";
 
 function isForbidden(err: unknown): boolean {
   return err instanceof ApiError && err.status === 403;
