@@ -1,11 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, symlinkSync, rmSync } from "node:fs";
+import { mkdtempSync, symlinkSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
-const DIST = join(dirname(fileURLToPath(import.meta.url)), "..", "dist", "index.js");
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const DIST = join(ROOT, "dist", "index.js");
 
 const HANDSHAKE = [
   JSON.stringify({
@@ -45,6 +46,19 @@ function listToolsVia(entryPath: string): string[] {
 // Getting that check wrong ships a server that starts, exits silently, and answers
 // nothing - which unit tests cannot see, because they never run the binary.
 describe("binary entry point", () => {
+  // These tests run the BUILT binary, so they need dist/. CI runs the test job
+  // without a build step (build happens only in the publish workflow), and locally
+  // dist/ may be stale or absent - so build it here rather than depending on
+  // whatever happens to be on disk. Passing only because of a leftover build is
+  // exactly the kind of hidden state this file exists to catch.
+  beforeAll(() => {
+    // Always build, never "build only if missing": a stale dist/ would let these
+    // tests pass against yesterday's binary, which is the same class of hidden
+    // state they exist to catch.
+    execFileSync("npm", ["run", "build"], { cwd: ROOT, stdio: "inherit", timeout: 120_000 });
+    expect(existsSync(DIST)).toBe(true);
+  }, 130_000);
+
   it("serves tools/list when run directly", () => {
     expect(listToolsVia(DIST)).toContain("create_event");
   });
