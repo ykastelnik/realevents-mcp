@@ -110,6 +110,56 @@ describe("apiCall", () => {
     await expect(apiCall("GET", "/events/boom")).rejects.toThrow(/API error: 500/);
   });
 
+  // Rails' render_validation_errors returns a generic error ("Validation failed")
+  // with the actionable detail in a separate `errors` array. Reading only `error`
+  // meant every model validation failure - a too-long comment, a bad email, a
+  // missing name - reported "Validation failed" with no hint of what to fix.
+  it("prefers the field-level errors array over the generic error string", async () => {
+    agent
+      .get("http://localhost:3000")
+      .intercept({ method: "POST", path: "/api/v1/manage/tok/comments" })
+      .reply(422, {
+        error: "Validation failed",
+        errors: ["Body is too long (maximum is 500 characters)"]
+      });
+
+    await expect(apiCall("POST", "/manage/tok/comments", { body: {} })).rejects.toThrow(
+      /maximum is 500 characters/
+    );
+  });
+
+  it("joins multiple field errors into one message", async () => {
+    agent
+      .get("http://localhost:3000")
+      .intercept({ method: "POST", path: "/api/v1/events" })
+      .reply(422, {
+        error: "Validation failed",
+        errors: ["Title can't be blank", "Start datetime can't be blank"]
+      });
+
+    await expect(apiCall("POST", "/events", { body: {} })).rejects.toThrow(
+      /Title can't be blank.*Start datetime can't be blank/
+    );
+  });
+
+  it("still uses the error string when no errors array is present", async () => {
+    agent
+      .get("http://localhost:3000")
+      .intercept({ method: "POST", path: "/api/v1/events" })
+      .reply(422, { error: "This event is full" });
+
+    await expect(apiCall("POST", "/events", { body: {} })).rejects.toThrow("This event is full");
+  });
+
+  it("ignores an empty errors array rather than throwing a blank message", async () => {
+    agent
+      .get("http://localhost:3000")
+      .intercept({ method: "POST", path: "/api/v1/events" })
+      .reply(422, { error: "Validation failed", errors: [] });
+
+    await expect(apiCall("POST", "/events", { body: {} })).rejects.toThrow("Validation failed");
+  });
+
   it("wraps network errors with a clear message", async () => {
     agent
       .get("http://localhost:3000")

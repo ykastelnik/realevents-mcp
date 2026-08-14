@@ -46,6 +46,12 @@ Organizer tools, all requiring the manage token:
 | `update_event` | Change any event detail or setting. |
 | `duplicate_event` | Copy the event into a new draft one week later. |
 | `cancel_event` | Mark the event cancelled. The page stays online. |
+| `list_comments` | Read the guest conversation: questions, replies and reactions. |
+| `post_comment` | Post to the thread as the organizer. Visible to every guest who RSVPed. |
+
+Comments only work on events where the organizer has switched them on
+(`update_event` with `allow_comments: true`). Until then both comment tools return
+a message saying exactly that.
 
 ### Timezones
 

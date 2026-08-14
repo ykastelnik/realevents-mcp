@@ -99,6 +99,41 @@ export interface ApiRegisterResponse {
   virtual_link?: string | null;
 }
 
+export interface ApiCommentReaction {
+  emoji: string;
+  count: number;
+  mine: boolean;
+}
+
+/** A row in the thread. A removed comment keeps its place but carries no body or
+ *  author, so every content field is optional. */
+export interface ApiThreadComment {
+  id: number;
+  removed?: boolean;
+  body?: string | null;
+  /** "guest" or "host". Host posts are the organizer and carry no author name. */
+  author_role?: string;
+  author?: string | null;
+  author_hue?: number | null;
+  mine?: boolean;
+  reactions?: ApiCommentReaction[];
+  created_at: string;
+}
+
+export interface ApiCommentThread {
+  comments: ApiThreadComment[];
+  total: number;
+  has_more: boolean;
+}
+
+/** The create response is a narrower shape than a thread row. */
+export interface ApiHostComment {
+  id: number;
+  body: string;
+  author_role: string;
+  created_at: string;
+}
+
 /** A retired slug resolves with HTTP 200 and this shape (not an { event }), so the
  *  public show endpoint can tell a client to move to the event's current address. */
 export interface ApiSlugRedirect {

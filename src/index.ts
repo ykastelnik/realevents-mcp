@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerCancelEvent } from "./tools/cancel-event.js";
+import { registerListComments, registerPostComment } from "./tools/comments.js";
 import { registerCreateEvent } from "./tools/create-event.js";
 import { registerDuplicateEvent } from "./tools/duplicate-event.js";
 import { registerGetEvent } from "./tools/get-event.js";
@@ -16,7 +17,7 @@ import { registerUpdateEvent } from "./tools/update-event.js";
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "realevents",
-    version: "1.1.0"
+    version: "1.2.0"
   });
 
   registerCreateEvent(server);
@@ -29,6 +30,8 @@ export function createServer(): McpServer {
   registerGetEventStats(server);
   registerCancelEvent(server);
   registerDuplicateEvent(server);
+  registerListComments(server);
+  registerPostComment(server);
 
   return server;
 }

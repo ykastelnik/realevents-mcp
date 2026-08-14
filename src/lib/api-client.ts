@@ -61,7 +61,17 @@ function buildQueryString(query: Record<string, QueryValue> | undefined): string
 
 async function parseErrorMessage(response: Response, status: number): Promise<string> {
   try {
-    const data = (await response.json()) as { error?: unknown };
+    const data = (await response.json()) as { error?: unknown; errors?: unknown };
+
+    // Rails' render_validation_errors returns a generic `error` ("Validation
+    // failed") plus the actionable detail in `errors`. Reading only `error` meant
+    // every model validation failure reported "Validation failed" with no hint of
+    // what to fix, so prefer the field-level messages when they are present.
+    if (Array.isArray(data?.errors)) {
+      const details = data.errors.filter((e): e is string => typeof e === "string" && e.length > 0);
+      if (details.length > 0) return details.join("; ");
+    }
+
     if (data && typeof data.error === "string" && data.error.length > 0) {
       return data.error;
     }

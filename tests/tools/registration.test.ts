@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createServer } from "../../src/index.js";
 import { registerCancelEvent } from "../../src/tools/cancel-event.js";
+import { registerListComments, registerPostComment } from "../../src/tools/comments.js";
 import { registerCreateEvent } from "../../src/tools/create-event.js";
 import { registerDuplicateEvent } from "../../src/tools/duplicate-event.js";
 import { registerGetEvent } from "../../src/tools/get-event.js";
@@ -20,7 +21,7 @@ function makeFakeServer(): FakeServer {
 }
 
 describe("tool registration", () => {
-  it("registers all ten tools with the expected names and inputSchema fields", () => {
+  it("registers all twelve tools with the expected names and inputSchema fields", () => {
     const server = makeFakeServer();
     const registrants = [
       {
@@ -40,7 +41,9 @@ describe("tool registration", () => {
       { fn: registerListRegistrations, name: "list_registrations", required: ["status"] },
       { fn: registerGetEventStats, name: "get_event_stats", required: [] },
       { fn: registerCancelEvent, name: "cancel_event", required: [] },
-      { fn: registerDuplicateEvent, name: "duplicate_event", required: [] }
+      { fn: registerDuplicateEvent, name: "duplicate_event", required: [] },
+      { fn: registerListComments, name: "list_comments", required: ["before"] },
+      { fn: registerPostComment, name: "post_comment", required: ["body"] }
     ];
 
     for (const { fn, name, required } of registrants) {
@@ -60,7 +63,7 @@ describe("tool registration", () => {
       }
     }
 
-    expect(server.registerTool).toHaveBeenCalledTimes(10);
+    expect(server.registerTool).toHaveBeenCalledTimes(12);
   });
 
   it("create_event input schema does not include end_datetime", () => {
@@ -92,8 +95,10 @@ describe("tool registration", () => {
         "get_event",
         "get_event_stats",
         "get_manage_event",
+        "list_comments",
         "list_public_events",
         "list_registrations",
+        "post_comment",
         "register_for_event",
         "update_event"
       ].sort()
