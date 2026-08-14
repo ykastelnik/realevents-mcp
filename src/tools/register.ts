@@ -61,16 +61,22 @@ export async function handleRegisterForEvent(input: RegisterInput): Promise<Tool
     // {id, email, first_name, last_name, status, response_note} - it does NOT echo
     // plus-ones (only the manage payload does). Reading them off the response meant
     // this line never rendered, so a booked party of three was confirmed with no
-    // mention of the guests. Fall back to what was SENT: the call returned 201, so
-    // the API accepted exactly that count, and `sent` already carries the
-    // status-gating (plus-ones are stripped on maybe/declined).
+    // mention of the guests.
+    //
+    // The COUNT falls back to what was sent: the API rejects (422) any count it will
+    // not honour - non-confirmed, over-limit, or unnamed under `names` detail - so a
+    // 201 means exactly that count was stored. `sent` also carries the status gating,
+    // so a maybe/declined response cannot claim a party.
+    //
+    // The NAMES deliberately do NOT fall back. On a `count_only` event the API
+    // silently discards them (`attrs[:plus_one_names] = []`) and still returns 201,
+    // so echoing what we sent would name guests absent from the organizer's list and
+    // contradict list_registrations, which reads the manage payload and correctly
+    // shows a bare "+2". A bare count is the honest rendering when we cannot confirm
+    // the names were kept.
     const plusOnes = data.registration.plus_ones_count ?? (sent["plus_ones_count"] as number) ?? 0;
     if (plusOnes > 0) {
-      const names = (
-        data.registration.plus_one_names ??
-        (sent["plus_one_names"] as string[]) ??
-        []
-      ).filter(Boolean);
+      const names = (data.registration.plus_one_names ?? []).filter(Boolean);
       const suffix = names.length > 0 ? ` (${names.join(", ")})` : "";
       lines.push(`Bringing: +${plusOnes}${suffix}`);
     }

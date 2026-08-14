@@ -149,10 +149,70 @@ describe("register_for_event tool", () => {
 
     expect(result.isError).toBeFalsy();
     const text = textOf(result);
-    // Echoed from what was accepted, since the response cannot tell us.
+    // The count is echoed from the request, since the response cannot tell us and
+    // the API rejects (422s) any count it will not honour, so a 201 means it stuck.
+    expect(text).toContain("+2");
+  });
+
+  // Unlike the count, names are NOT rejected when the organizer collects a
+  // headcount only: public_events_controller clears them
+  // (`attrs[:plus_one_names] = [] if confirmed && plus_ones_detail == "count_only"`)
+  // and still returns 201. Echoing the sent names would name guests who do not
+  // exist in the organizer's list, and would contradict list_registrations, which
+  // reads the manage payload and correctly shows a bare "+2".
+  it("does not name guests the API may have discarded", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "POST", path: "/api/v1/events/test/registrations" })
+      // The public registration_json never carries plus_one_names, so this is the
+      // real shape whether the event is count_only or names.
+      .reply(201, {
+        registration: makeRegistration({ first_name: "Ana" }),
+        event: makeEvent({ slug: "test" })
+      });
+
+    const text = textOf(
+      await handleRegisterForEvent({
+        slug: "test",
+        email: "x@y.com",
+        first_name: "Ana",
+        status: "confirmed",
+        plus_ones_count: 2,
+        plus_one_names: ["Luc", "Zoe"]
+      })
+    );
+
+    expect(text).toContain("+2");
+    expect(text).not.toContain("Luc");
+    expect(text).not.toContain("Zoe");
+  });
+
+  it("names the guests when the API does echo them back", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "POST", path: "/api/v1/events/test/registrations" })
+      .reply(201, {
+        registration: makeRegistration({
+          first_name: "Ana",
+          plus_ones_count: 2,
+          plus_one_names: ["Luc", "Zoe"]
+        }),
+        event: makeEvent({ slug: "test" })
+      });
+
+    const text = textOf(
+      await handleRegisterForEvent({
+        slug: "test",
+        email: "x@y.com",
+        first_name: "Ana",
+        status: "confirmed",
+        plus_ones_count: 2,
+        plus_one_names: ["Luc", "Zoe"]
+      })
+    );
+
     expect(text).toContain("+2");
     expect(text).toContain("Luc");
-    expect(text).toContain("Zoe");
   });
 
   it("reports the party size even when the organizer collects no names", async () => {
