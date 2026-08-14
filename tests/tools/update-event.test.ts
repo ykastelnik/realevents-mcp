@@ -73,4 +73,96 @@ describe("update_event tool", () => {
     expect(result.isError).toBe(true);
     expect(textOf(result)).toContain("Slug already taken");
   });
+
+  it("sends the guest-facing settings the manage API accepts", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({
+        method: "PATCH",
+        path: "/api/v1/manage/tok",
+        body: JSON.stringify({
+          event: {
+            timezone: "Europe/Paris",
+            allow_maybe: true,
+            allow_notes: false,
+            plus_ones_limit: 2,
+            plus_ones_detail: "names"
+          }
+        })
+      })
+      .reply(200, {
+        event: makeEvent({ timezone: "Europe/Paris" }),
+        public_url: "/e/x",
+        manage_url: "/manage/tok"
+      });
+
+    const result = await handleUpdateEvent({
+      manage_token: "tok",
+      timezone: "Europe/Paris",
+      allow_maybe: true,
+      allow_notes: false,
+      plus_ones_limit: 2,
+      plus_ones_detail: "names"
+    });
+
+    expect(result.isError).toBeFalsy();
+  });
+
+  // `false` and `0` are meaningful values here: dropping them (as a plain falsy
+  // filter does) would make it impossible to turn a setting off or disable plus-ones.
+  it("sends falsy-but-meaningful values instead of dropping them", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({
+        method: "PATCH",
+        path: "/api/v1/manage/tok",
+        // Key order follows UPDATABLE_KEYS, not the order they were passed in.
+        body: JSON.stringify({ event: { allow_comments: false, plus_ones_limit: 0 } })
+      })
+      .reply(200, { event: makeEvent(), public_url: "/e/x", manage_url: "/manage/tok" });
+
+    const result = await handleUpdateEvent({
+      manage_token: "tok",
+      plus_ones_limit: 0,
+      allow_comments: false
+    });
+
+    expect(result.isError).toBeFalsy();
+  });
+
+  // The API clears the column on a blank end_datetime, but the tool's own
+  // empty-string filter ate the blank, so an end time could be set and never removed.
+  it("clears the end time when asked, via an explicit flag", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({
+        method: "PATCH",
+        path: "/api/v1/manage/tok",
+        body: JSON.stringify({ event: { end_datetime: "" } })
+      })
+      .reply(200, { event: makeEvent(), public_url: "/e/x", manage_url: "/manage/tok" });
+
+    const result = await handleUpdateEvent({ manage_token: "tok", clear_end_datetime: true });
+
+    expect(result.isError).toBeFalsy();
+  });
+
+  it("ignores the clear flag when an end time is also supplied", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({
+        method: "PATCH",
+        path: "/api/v1/manage/tok",
+        body: JSON.stringify({ event: { end_datetime: "2026-06-15T22:00:00" } })
+      })
+      .reply(200, { event: makeEvent(), public_url: "/e/x", manage_url: "/manage/tok" });
+
+    const result = await handleUpdateEvent({
+      manage_token: "tok",
+      end_datetime: "2026-06-15T22:00:00",
+      clear_end_datetime: true
+    });
+
+    expect(result.isError).toBeFalsy();
+  });
 });

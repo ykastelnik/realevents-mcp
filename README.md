@@ -27,18 +27,71 @@ For Claude Desktop on macOS, the config file is at `~/Library/Application Suppor
 
 ## Tools
 
+Public, no token needed:
+
 | Tool | Description |
 |------|-------------|
-| `list_public_events` | Browse upcoming public events |
-| `get_event` | Get details of an event by slug |
-| `create_event` | Create a new event page |
-| `register_for_event` | Register an attendee |
-| `get_manage_event` | View an event's details and registrations (requires manage_token) |
-| `update_event` | Update event details (requires manage_token) |
+| `list_public_events` | Browse upcoming public events. Filter by format, date range or search term. |
+| `get_event` | Get an event's public details by slug. Follows old links after a slug change. |
+| `register_for_event` | RSVP for an attendee: going, maybe or not going, with plus-ones and a note. |
+| `create_event` | Create a new event page. Returns the public link and the manage link. |
+
+Organizer tools, all requiring the manage token:
+
+| Tool | Description |
+|------|-------------|
+| `get_manage_event` | Full event details plus the guest list. |
+| `list_registrations` | The guest list on its own, optionally filtered to confirmed / maybe / declined. |
+| `get_event_stats` | Page views, head-count, remaining capacity, view-to-attendance rate. |
+| `update_event` | Change any event detail or setting. |
+| `duplicate_event` | Copy the event into a new draft one week later. |
+| `cancel_event` | Mark the event cancelled. The page stays online. |
+| `set_cover` | Set the cover image from a public image URL. |
+| `list_comments` | Read the guest conversation: questions, replies and reactions. |
+| `post_comment` | Post to the thread as the organizer. Visible to every guest who RSVPed. |
+
+Comments only work on events where the organizer has switched them on
+(`update_event` with `allow_comments: true`). Until then both comment tools return
+a message saying exactly that.
+
+### Cover images
+
+`set_cover` takes a **public image URL**, not a file. MCP tool arguments are JSON
+text, so an assistant cannot hand a local image to the server; if the picture is on
+the user's computer, the manage page's upload does the job better anyway (drag and
+drop, preview, crop). Around 1200px wide or more looks best - `set_cover` says so
+when the image is smaller rather than silently accepting a thumbnail.
+
+### Timezones
+
+`create_event` takes a `timezone` (an IANA name such as `Europe/Paris`) alongside
+`start_datetime`. **Set it.** The start time is interpreted in that zone, and the
+zone defaults to UTC, so creating an event for `19:00` without one produces a page
+that reads 19:00 UTC: the wrong hour for everyone outside it.
+
+Prefer a local time with no trailing `Z`:
+
+```
+start_datetime: "2026-06-15T19:00:00"
+timezone:       "Europe/Paris"
+```
+
+### Attendance is counted in people
+
+An event's attendance figure is a head-count: confirmed guests plus everyone they
+bring. A guest arriving with three others takes four of the available places, so a
+party can be refused on an event that still shows free rows. When that happens the
+error states how many places are left, so the call can be retried with a smaller
+party rather than reported as a failure.
+
+Plus-ones only attach to a `confirmed` answer, and are capped by the event's own
+`plus_ones_limit` (0 disables them). When the organizer collects names rather than
+a headcount, every declared guest needs one. `get_event` reports both settings.
 
 ## Manage token
 
-Events created with `create_event` return a `manage_token`. Save it — it is the only way to manage the event later.
+Events created with `create_event` return a `manage_token`. Save it: it is the only
+way to manage the event later.
 
 To set a default token so you don't have to pass it on every call:
 
@@ -67,7 +120,7 @@ Signed with [npm Provenance](https://docs.npmjs.com/generating-provenance-statem
 - [GitHub repository](https://github.com/ykastelnik/realevents-mcp)
 - [MCP Registry listing](https://registry.modelcontextprotocol.io/v0/servers?search=realevents)
 
-## For maintainers — publishing checklist
+## For maintainers: publishing checklist
 
 Before publishing a new version:
 

@@ -105,6 +105,86 @@ describe("create_event tool", () => {
     expect(result.isError).toBeFalsy();
   });
 
+  // The API parses start_datetime *in the event's timezone* and defaults that
+  // timezone to UTC. Omitting it silently shifted every MCP-created event by the
+  // organizer's UTC offset - a Paris "19:00" became 21:00 local, with no error.
+  it("forwards timezone so the API does not silently default the event to UTC", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({
+        method: "POST",
+        path: "/api/v1/events",
+        body: JSON.stringify({
+          event: {
+            title: "Paris Meetup",
+            start_datetime: "2026-06-15T19:00:00",
+            timezone: "Europe/Paris"
+          }
+        })
+      })
+      .reply(201, {
+        event: makeEvent({ title: "Paris Meetup", timezone: "Europe/Paris" }),
+        manage_url: "/manage/tok",
+        public_url: "/e/paris-meetup"
+      });
+
+    const result = await handleCreateEvent({
+      title: "Paris Meetup",
+      start_datetime: "2026-06-15T19:00:00",
+      timezone: "Europe/Paris"
+    });
+
+    expect(result.isError).toBeFalsy();
+  });
+
+  // The confirmation must read the start time on the EVENT's clock. Formatting it
+  // in the host's zone produced output that contradicted the Timezone line printed
+  // directly beneath it - a 19:00 New York event confirmed as "1:00 AM GMT+2".
+  it("echoes the start time in the event's timezone, not the host's", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "POST", path: "/api/v1/events" })
+      .reply(201, {
+        // 23:00 UTC is 19:00 in New York; the host clock must not decide this.
+        event: makeEvent({
+          start_datetime: "2026-10-01T23:00:00Z",
+          timezone: "America/New_York"
+        }),
+        manage_url: "/manage/tok",
+        public_url: "/e/x"
+      });
+
+    const text = textOf(
+      await handleCreateEvent({
+        title: "NY",
+        start_datetime: "2026-10-01T19:00:00",
+        timezone: "America/New_York"
+      })
+    );
+
+    expect(text).toContain("7:00 PM");
+    expect(text).toMatch(/Starts:.*October 1/);
+  });
+
+  it("surfaces the stored timezone back to the caller", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "POST", path: "/api/v1/events" })
+      .reply(201, {
+        event: makeEvent({ title: "Paris Meetup", timezone: "Europe/Paris" }),
+        manage_url: "/manage/tok",
+        public_url: "/e/paris-meetup"
+      });
+
+    const result = await handleCreateEvent({
+      title: "Paris Meetup",
+      start_datetime: "2026-06-15T19:00:00",
+      timezone: "Europe/Paris"
+    });
+
+    expect(textOf(result)).toContain("Europe/Paris");
+  });
+
   it("returns isError on validation failure", async () => {
     ctx.agent
       .get(TEST_API_HOST)
