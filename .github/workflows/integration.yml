@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       REALEVENTS_API_URL: https://realevents.co/api/v1
+      # Empty unless the secret is set, which is how the organizer-tool steps below
+      # stay skipped rather than failing on a repo that has no smoke manage token.
+      SMOKE_MANAGE_TOKEN: ${{ secrets.SMOKE_MANAGE_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -24,13 +27,26 @@ jobs:
       - name: Make runner script executable
         run: chmod +x scripts/run-prompt.sh
 
-      - name: tools/list returns 6 tools
+      # Asserts the tools BY NAME, not by count. A count told us nothing about WHICH
+      # tool had gone missing, and it silently became a release blocker whenever the
+      # set grew: it stayed pinned at 6 while the server shipped 12.
+      - name: tools/list exposes every expected tool
         run: |
           (
             echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}'
             echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
             echo '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
-          ) | node dist/index.js | tail -1 | jq -e '.result.tools | length == 6'
+          ) | node dist/index.js | tail -1 > /tmp/tools.json
+          EXPECTED=$(jq -nc '["cancel_event","create_event","duplicate_event","get_event","get_event_stats","get_manage_event","list_comments","list_public_events","list_registrations","post_comment","register_for_event","update_event"] | sort')
+          ACTUAL=$(jq -c '[.result.tools[].name] | sort' /tmp/tools.json)
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "FAIL: the exposed tool set changed."
+            echo "  expected: $EXPECTED"
+            echo "  actual:   $ACTUAL"
+            echo "If intentional, update EXPECTED here AND McpToolList.vue in the app repo."
+            exit 1
+          fi
+          echo "OK: all $(echo "$EXPECTED" | jq 'length') tools present"
 
       - name: P1 list_public_events (no filter)
         run: |
@@ -56,6 +72,43 @@ jobs:
           echo "$OUT"
           echo "$OUT" | grep -q 'RealEvents MCP smoke test' || (echo "FAIL: smoke event not found"; exit 1)
           echo "$OUT" | grep -q 'Status: published' || (echo "FAIL: smoke event not published"; exit 1)
+
+      # The attendance line is rendered from registrations_count / places_remaining /
+      # maybe_registrations_count. If the API stopped sending them, the tool would
+      # quietly print a bare "Attendance:" rather than fail, so assert the shape.
+      - name: P5 get_event renders the attendance line
+        run: |
+          OUT=$(./scripts/run-prompt.sh '{"name":"get_event","arguments":{"slug":"realevents-mcp-smoke-test"}}')
+          echo "$OUT" | grep -qE 'Attendance: [0-9]+ going' || (echo "FAIL: attendance line missing or malformed"; exit 1)
+
+      # A wrong slug must produce a clean, explanatory error - not a crash. This is
+      # the path that used to throw on a retired slug before the redirect fix.
+      - name: P6 get_event on an unknown slug fails cleanly
+        run: |
+          OUT=$(./scripts/run-prompt.sh '{"name":"get_event","arguments":{"slug":"definitely-not-an-event-xyz"}}')
+          echo "$OUT"
+          echo "$OUT" | grep -qi 'error' || (echo "FAIL: expected an error message"; exit 1)
+          echo "$OUT" | grep -qiE 'undefined|cannot read|TypeError' && (echo "FAIL: crashed instead of erroring"; exit 1)
+          echo "OK"
+
+      # Organizer tools need a manage token, which is a write-capable secret for the
+      # smoke event. These steps stay skipped until SMOKE_MANAGE_TOKEN is set in repo
+      # secrets; they are read-only when it is (no tool here mutates the event).
+      - name: P7 organizer read-only tools (needs SMOKE_MANAGE_TOKEN)
+        if: ${{ env.SMOKE_MANAGE_TOKEN != '' }}
+        run: |
+          STATS=$(./scripts/run-prompt.sh "{\"name\":\"get_event_stats\",\"arguments\":{\"manage_token\":\"$SMOKE_MANAGE_TOKEN\"}}")
+          echo "$STATS"
+          echo "$STATS" | grep -q 'Page views:' || (echo "FAIL: stats missing page views"; exit 1)
+          echo "$STATS" | grep -qE 'NaN|Infinity' && (echo "FAIL: stats rendered a non-number"; exit 1)
+
+          GUESTS=$(./scripts/run-prompt.sh "{\"name\":\"list_registrations\",\"arguments\":{\"manage_token\":\"$SMOKE_MANAGE_TOKEN\"}}")
+          echo "$GUESTS"
+          echo "$GUESTS" | grep -qE 'registrations for|No registrations' || (echo "FAIL: unexpected guest list output"; exit 1)
+
+          COMMENTS=$(./scripts/run-prompt.sh "{\"name\":\"list_comments\",\"arguments\":{\"manage_token\":\"$SMOKE_MANAGE_TOKEN\"}}")
+          echo "$COMMENTS"
+          echo "$COMMENTS" | grep -qE 'comment|No comments|not enabled' || (echo "FAIL: unexpected comments output"; exit 1)
 
       - name: Notify on failure
         if: failure()
