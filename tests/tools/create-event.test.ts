@@ -105,6 +105,57 @@ describe("create_event tool", () => {
     expect(result.isError).toBeFalsy();
   });
 
+  // The API parses start_datetime *in the event's timezone* and defaults that
+  // timezone to UTC. Omitting it silently shifted every MCP-created event by the
+  // organizer's UTC offset - a Paris "19:00" became 21:00 local, with no error.
+  it("forwards timezone so the API does not silently default the event to UTC", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({
+        method: "POST",
+        path: "/api/v1/events",
+        body: JSON.stringify({
+          event: {
+            title: "Paris Meetup",
+            start_datetime: "2026-06-15T19:00:00",
+            timezone: "Europe/Paris"
+          }
+        })
+      })
+      .reply(201, {
+        event: makeEvent({ title: "Paris Meetup", timezone: "Europe/Paris" }),
+        manage_url: "/manage/tok",
+        public_url: "/e/paris-meetup"
+      });
+
+    const result = await handleCreateEvent({
+      title: "Paris Meetup",
+      start_datetime: "2026-06-15T19:00:00",
+      timezone: "Europe/Paris"
+    });
+
+    expect(result.isError).toBeFalsy();
+  });
+
+  it("surfaces the stored timezone back to the caller", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "POST", path: "/api/v1/events" })
+      .reply(201, {
+        event: makeEvent({ title: "Paris Meetup", timezone: "Europe/Paris" }),
+        manage_url: "/manage/tok",
+        public_url: "/e/paris-meetup"
+      });
+
+    const result = await handleCreateEvent({
+      title: "Paris Meetup",
+      start_datetime: "2026-06-15T19:00:00",
+      timezone: "Europe/Paris"
+    });
+
+    expect(textOf(result)).toContain("Europe/Paris");
+  });
+
   it("returns isError on validation failure", async () => {
     ctx.agent
       .get(TEST_API_HOST)

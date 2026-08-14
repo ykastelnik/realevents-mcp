@@ -27,11 +27,20 @@ export function stripHtml(input: string | null | undefined): string {
     .trim();
 }
 
-export function formatDate(input: string | null | undefined): string {
+/**
+ * Renders a timestamp in the EVENT's timezone, not the host's.
+ *
+ * Without the zone, the time was formatted against whatever clock the machine
+ * running the MCP happened to be on, so an organizer in New York saw a Paris
+ * event at its Eastern hour. An unusable zone degrades to the host default
+ * rather than throwing - a mis-set timezone must not break a whole tool call.
+ */
+export function formatDate(input: string | null | undefined, timezone?: string | null): string {
   if (!input) return "";
   const date = new Date(input);
   if (Number.isNaN(date.getTime())) return input;
-  return date.toLocaleString("en-US", {
+
+  const options: Intl.DateTimeFormatOptions = {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -39,24 +48,55 @@ export function formatDate(input: string | null | undefined): string {
     hour: "numeric",
     minute: "2-digit",
     timeZoneName: "short"
-  });
+  };
+
+  if (timezone) {
+    try {
+      return date.toLocaleString("en-US", { ...options, timeZone: timezone });
+    } catch {
+      // Invalid IANA name: fall through to the host zone below.
+    }
+  }
+  return date.toLocaleString("en-US", options);
 }
 
 function humanFormat(format: string): string {
   return format.replace(/_/g, " ");
 }
 
+/**
+ * Attendance line. `registrations_count` is a HEAD-count (confirmed rows plus their
+ * plus-ones), so it is deliberately labelled "going" rather than "registrations":
+ * calling it a row count made it disagree with the guest list.
+ */
+function attendanceLine(event: ApiEvent): string {
+  const parts = [`${event.registrations_count} going`];
+  if (event.places_remaining != null) {
+    parts.push(`${event.places_remaining} spots left`);
+  }
+  if (event.allow_maybe && event.maybe_registrations_count) {
+    parts.push(`${event.maybe_registrations_count} maybe`);
+  }
+  return `Attendance: ${parts.join(" | ")}`;
+}
+
 export function formatEvent(event: ApiEvent, publicBase: string): string {
   const lines: string[] = [
     event.title,
     `Format: ${humanFormat(event.format)}`,
-    `Date: ${formatDate(event.start_datetime)}`
+    `Date: ${formatDate(event.start_datetime, event.timezone)}`
   ];
-  if (event.end_datetime) lines.push(`End: ${formatDate(event.end_datetime)}`);
+  if (event.end_datetime) lines.push(`End: ${formatDate(event.end_datetime, event.timezone)}`);
   if (event.location) lines.push(`Location: ${event.location}`);
   if (event.virtual_link) lines.push(`Virtual link: ${event.virtual_link}`);
   if (event.max_attendees != null) lines.push(`Max attendees: ${event.max_attendees}`);
-  lines.push(`Registrations: ${event.registrations_count} people`);
+  lines.push(attendanceLine(event));
+  // Tell the caller what a register_for_event call may legitimately ask for, so it
+  // can size a plus-ones request instead of discovering the limit through a 422.
+  if (event.plus_ones_limit) {
+    const detail = event.plus_ones_detail === "names" ? "names required" : "count only";
+    lines.push(`Plus-ones: up to ${event.plus_ones_limit} per guest (${detail})`);
+  }
   lines.push(`Status: ${event.status}`);
 
   if (event.description) {
@@ -74,9 +114,24 @@ export function formatRegistrations(registrations: ApiRegistration[]): string {
   return registrations
     .map((r, i) => {
       const namePart = [r.first_name, r.last_name].filter(Boolean).join(" ").trim();
-      const prefix = `${i + 1}.`;
       const identity = namePart.length > 0 ? `${namePart} (${r.email})` : r.email;
-      return `${prefix} ${identity} - ${r.status} - ${formatDate(r.created_at)}`;
+
+      const bits = [`${i + 1}. ${identity}`, r.status];
+      if (r.plus_ones_count) {
+        const names = (r.plus_one_names ?? []).filter(Boolean);
+        // Names are optional: under count_only the organizer collects a number only,
+        // so render the bare "+N" rather than an empty parenthesis.
+        bits.push(
+          names.length > 0 ? `+${r.plus_ones_count} (${names.join(", ")})` : `+${r.plus_ones_count}`
+        );
+      }
+      if (r.bounced) bits.push("email bounced");
+      bits.push(formatDate(r.created_at));
+
+      const line = bits.join(" - ");
+      // The note goes on its own indented line: it is free text and can be long
+      // enough to make the row unreadable inline.
+      return r.response_note ? `${line}\n   Note: ${r.response_note}` : line;
     })
     .join("\n");
 }
@@ -93,15 +148,24 @@ export function formatManageEvent(
   const lines: string[] = [
     `${event.title} (manage view)`,
     headerBits.join(" | "),
-    `Date: ${formatDate(event.start_datetime)}`
+    `Date: ${formatDate(event.start_datetime, event.timezone)}`
   ];
-  if (event.end_datetime) lines.push(`End: ${formatDate(event.end_datetime)}`);
+  if (event.end_datetime) lines.push(`End: ${formatDate(event.end_datetime, event.timezone)}`);
+  if (event.timezone) lines.push(`Timezone: ${event.timezone}`);
   if (event.location) lines.push(`Location: ${event.location}`);
   if (event.virtual_link) lines.push(`Virtual link: ${event.virtual_link}`);
   if (event.max_attendees != null) lines.push(`Max attendees: ${event.max_attendees}`);
   if (event.organizer_email) lines.push(`Organizer email: ${event.organizer_email}`);
+  lines.push(attendanceLine(event));
 
-  lines.push("", `Registrations (${registrations.length}):`, formatRegistrations(registrations));
+  // Row count, not head-count: this labels the list below, which has one line per
+  // registration. The head-count lives in the attendance line above.
+  const rowLabel = registrations.length === 1 ? "row" : "rows";
+  lines.push(
+    "",
+    `Guest list (${registrations.length} ${rowLabel}):`,
+    formatRegistrations(registrations)
+  );
 
   lines.push(
     "",
@@ -122,8 +186,9 @@ export function formatDirectory(response: ApiDirectoryResponse, publicBase: stri
 
   const items = response.events.map((event, i) => {
     const where = event.location ?? (event.format === "virtual" ? "virtual" : "TBD");
+    const when = formatDate(event.start_datetime, event.timezone);
     return [
-      `${i + 1}. ${event.title} - ${formatDate(event.start_datetime)} - ${humanFormat(event.format)} - ${where}`,
+      `${i + 1}. ${event.title} - ${when} - ${humanFormat(event.format)} - ${where}`,
       `   ${publicBase}/e/${event.slug}`
     ].join("\n");
   });

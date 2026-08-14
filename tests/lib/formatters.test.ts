@@ -29,6 +29,18 @@ function makeEvent(overrides: Partial<ApiEvent> = {}): ApiEvent {
   };
 }
 
+function makeRegistration(overrides: Partial<ApiRegistration> = {}): ApiRegistration {
+  return {
+    id: 1,
+    email: "marie@example.com",
+    first_name: "Marie",
+    last_name: "Dupont",
+    status: "confirmed",
+    created_at: "2026-03-15T10:00:00Z",
+    ...overrides
+  };
+}
+
 describe("stripHtml", () => {
   it("removes simple tags", () => {
     expect(stripHtml("<p>hello</p>")).toBe("hello");
@@ -74,6 +86,28 @@ describe("formatDate", () => {
     expect(formatDate(null)).toBe("");
     expect(formatDate(undefined)).toBe("");
   });
+
+  // Without an explicit zone the time was rendered in the HOST's timezone, so an
+  // organizer running the MCP from New York saw a Paris event at its Eastern hour.
+  // The event's own zone is the only correct frame of reference.
+  it("renders the time in the event's timezone, not the host's", () => {
+    // 17:00 UTC is 19:00 in Paris and 13:00 in New York.
+    expect(formatDate("2026-06-15T17:00:00Z", "Europe/Paris")).toContain("7:00 PM");
+    expect(formatDate("2026-06-15T17:00:00Z", "America/New_York")).toContain("1:00 PM");
+  });
+
+  it("labels the zone so the reader can tell which clock the time is on", () => {
+    expect(formatDate("2026-06-15T17:00:00Z", "America/New_York")).toMatch(/EDT|GMT-4/);
+  });
+
+  it("falls back to the host timezone when the event has no zone", () => {
+    expect(formatDate("2026-06-15T17:00:00Z", null)).toMatch(/2026/);
+  });
+
+  it("ignores an unusable timezone rather than throwing", () => {
+    expect(() => formatDate("2026-06-15T17:00:00Z", "Not/AZone")).not.toThrow();
+    expect(formatDate("2026-06-15T17:00:00Z", "Not/AZone")).toMatch(/2026/);
+  });
 });
 
 describe("formatEvent", () => {
@@ -92,7 +126,7 @@ describe("formatEvent", () => {
     expect(out).toContain("Format: in person");
     expect(out).toContain("Location: Palais de la Bourse, Bordeaux");
     expect(out).toContain("Virtual link: https://meet.example/abc");
-    expect(out).toContain("Registrations: 12 people");
+    expect(out).toContain("12 going");
     expect(out).toContain("Status: published");
     expect(out).toContain("Join us for tech talks");
     expect(out).toContain("https://realevents.co/e/bordeaux-tech-meetup");
@@ -104,7 +138,61 @@ describe("formatEvent", () => {
     expect(out).not.toContain("Location:");
     expect(out).not.toContain("Virtual link:");
     expect(out).not.toContain("Description:");
-    expect(out).toContain("Registrations: 0 people");
+    expect(out).toContain("0 going");
+  });
+
+  it("renders the date in the event's own timezone", () => {
+    const out = formatEvent(
+      makeEvent({ start_datetime: "2026-06-15T17:00:00Z", timezone: "America/New_York" }),
+      PUBLIC_BASE
+    );
+    expect(out).toContain("1:00 PM");
+  });
+
+  it("reports remaining places when the event is capped", () => {
+    const out = formatEvent(
+      makeEvent({ max_attendees: 50, registrations_count: 12, places_remaining: 38 }),
+      PUBLIC_BASE
+    );
+    expect(out).toContain("12 going");
+    expect(out).toContain("38 spots left");
+  });
+
+  it("does not invent a spots-left figure for an uncapped event", () => {
+    const out = formatEvent(
+      makeEvent({ registrations_count: 12, places_remaining: null }),
+      PUBLIC_BASE
+    );
+    expect(out).toContain("12 going");
+    expect(out).not.toContain("spots left");
+  });
+
+  it("shows the maybe count only when maybe responses are enabled", () => {
+    const withMaybe = formatEvent(
+      makeEvent({ allow_maybe: true, maybe_registrations_count: 4 }),
+      PUBLIC_BASE
+    );
+    expect(withMaybe).toContain("4 maybe");
+
+    const withoutMaybe = formatEvent(
+      makeEvent({ allow_maybe: false, maybe_registrations_count: 0 }),
+      PUBLIC_BASE
+    );
+    expect(withoutMaybe).not.toContain("maybe");
+  });
+
+  it("advertises the plus-ones allowance so a caller knows what it may request", () => {
+    const out = formatEvent(
+      makeEvent({ plus_ones_limit: 3, plus_ones_detail: "names" }),
+      PUBLIC_BASE
+    );
+    expect(out).toContain("Plus-ones: up to 3");
+    expect(out).toContain("names");
+  });
+
+  it("says nothing about plus-ones when the event disallows them", () => {
+    const out = formatEvent(makeEvent({ plus_ones_limit: 0 }), PUBLIC_BASE);
+    expect(out).not.toContain("Plus-ones");
   });
 });
 
@@ -141,6 +229,37 @@ describe("formatRegistrations", () => {
     expect(lines[1]).toContain("jean@example.com");
     expect(lines[1]).not.toMatch(/^\s*2\.\s+\(/); // no leading orphan parenthesis when no name
   });
+
+  // The head-count includes plus-ones, so a list that shows only rows silently
+  // disagrees with the "N going" total the organizer sees everywhere else.
+  it("shows plus-ones so the list reconciles with the head-count", () => {
+    const out = formatRegistrations([
+      makeRegistration({ plus_ones_count: 2, plus_one_names: ["Ana", "Luc"] })
+    ]);
+    expect(out).toContain("+2");
+    expect(out).toContain("Ana");
+    expect(out).toContain("Luc");
+  });
+
+  it("shows the count alone when the organizer collects no names", () => {
+    const out = formatRegistrations([makeRegistration({ plus_ones_count: 3, plus_one_names: [] })]);
+    expect(out).toContain("+3");
+  });
+
+  it("omits the plus-ones marker for a guest coming alone", () => {
+    const out = formatRegistrations([makeRegistration({ plus_ones_count: 0 })]);
+    expect(out).not.toContain("+0");
+  });
+
+  it("flags a bounced invitation so the organizer can chase another address", () => {
+    const out = formatRegistrations([makeRegistration({ bounced: true })]);
+    expect(out.toLowerCase()).toContain("bounced");
+  });
+
+  it("includes the guest's note when they left one", () => {
+    const out = formatRegistrations([makeRegistration({ response_note: "Arriving late" })]);
+    expect(out).toContain("Arriving late");
+  });
 });
 
 describe("formatManageEvent", () => {
@@ -165,7 +284,7 @@ describe("formatManageEvent", () => {
 
     expect(out).toContain("Bordeaux Tech Meetup (manage view)");
     expect(out).toContain("Page views: 42");
-    expect(out).toContain("Registrations (1)");
+    expect(out).toContain("Guest list (1 row)");
     expect(out).toContain("x@y.com");
     expect(out).toContain("https://realevents.co/e/bordeaux-tech-meetup");
     expect(out).toContain("https://realevents.co/manage/tok123");

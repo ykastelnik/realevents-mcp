@@ -1,12 +1,14 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { apiCall } from "../lib/api-client.js";
+import { formatDate } from "../lib/formatters.js";
 import { ok, publicBase, runTool, type ToolResult } from "../lib/tool-runtime.js";
 import type { ApiCreateEventResponse } from "../types.js";
 
 const ALLOWED_KEYS = [
   "title",
   "start_datetime",
+  "timezone",
   "format",
   "description",
   "location",
@@ -18,6 +20,7 @@ const ALLOWED_KEYS = [
 export interface CreateEventInput {
   title: string;
   start_datetime: string;
+  timezone?: string;
   format?: "in_person" | "virtual" | "hybrid";
   description?: string;
   location?: string;
@@ -48,13 +51,19 @@ export async function handleCreateEvent(input: CreateEventInput): Promise<ToolRe
     const base = publicBase();
     const lines = [
       `Event "${data.event.title}" created successfully.`,
+      `Starts: ${formatDate(data.event.start_datetime)}`
+    ];
+    // Echo the stored zone so a wrong one is visible immediately, rather than
+    // surfacing later as an event page showing the wrong local hour.
+    if (data.event.timezone) lines.push(`Timezone: ${data.event.timezone}`);
+    lines.push(
       "",
       `Public link: ${base}/e/${data.event.slug}`,
       `Manage link: ${base}${data.manage_url}`,
       "",
       "Save the manage link - it's the only way to edit your event later.",
       "To set an end time or other details, use update_event with this manage token."
-    ];
+    );
     return ok(lines.join("\n"));
   });
 }
@@ -64,7 +73,18 @@ const inputSchema = {
   start_datetime: z
     .string()
     .min(1)
-    .describe("Start date and time in ISO 8601 format (e.g. '2026-06-15T19:00:00Z')"),
+    .describe(
+      "Start date and time, ISO 8601 (e.g. '2026-06-15T19:00:00'). Interpreted in the " +
+        "event's timezone, so prefer a local time WITHOUT a trailing Z and pass `timezone`."
+    ),
+  timezone: z
+    .string()
+    .optional()
+    .describe(
+      "IANA timezone the event happens in, e.g. 'Europe/Paris'. Defaults to UTC. " +
+        "Always set this to the organizer's local zone: otherwise a start time like " +
+        "19:00 is stored as 19:00 UTC and shows at the wrong local hour on the page."
+    ),
   format: z
     .enum(["in_person", "virtual", "hybrid"])
     .optional()

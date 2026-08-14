@@ -19,7 +19,44 @@ describe("get_event tool", () => {
     const text = textOf(result);
     expect(text).toContain("Bordeaux Tech Meetup");
     expect(text).toContain("Location: Bordeaux");
-    expect(text).toContain("Registrations: 12 people");
+    expect(text).toContain("12 going");
+  });
+
+  // A retired slug answers 200 with { redirect: true, slug } rather than { event }.
+  // The tool used to read data.event off that body and crash on `.title`, so a guest
+  // following an old shared link got a crash instead of the event.
+  it("follows a slug redirect and returns the event at its new address", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "GET", path: "/api/v1/events/old-slug" })
+      .reply(200, { redirect: true, slug: "new-slug" });
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "GET", path: "/api/v1/events/new-slug" })
+      .reply(200, { event: makeEvent({ slug: "new-slug", title: "Moved Event" }) });
+
+    const result = await handleGetEvent({ slug: "old-slug" });
+
+    expect(result.isError).toBeFalsy();
+    const text = textOf(result);
+    expect(text).toContain("Moved Event");
+    expect(text).toContain("new-slug");
+  });
+
+  it("stops after one redirect hop instead of following a loop", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "GET", path: "/api/v1/events/a" })
+      .reply(200, { redirect: true, slug: "b" });
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "GET", path: "/api/v1/events/b" })
+      .reply(200, { redirect: true, slug: "a" });
+
+    const result = await handleGetEvent({ slug: "a" });
+
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain("redirects again");
   });
 
   it("returns isError on 404", async () => {
