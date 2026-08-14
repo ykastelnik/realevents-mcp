@@ -44,11 +44,25 @@ export async function handleGetEventStats(input: GetEventStatsInput): Promise<To
       lines.push(`Capacity: ${going}/${event.max_attendees} (${left} left)`);
     }
 
-    // Views-to-attendance is the number that separates "nobody is seeing the page"
-    // from "people see it and do not sign up". Guarded against a page with no views
-    // yet, which would otherwise render NaN.
+    // Views-to-attendance separates "nobody is seeing the page" from "people see it
+    // and do not sign up". Guarded against a page with no views yet, which would
+    // otherwise render NaN.
+    //
+    // The two numbers do not share a denominator: `going` is a head-count including
+    // plus-ones, while page_views counts only non-crawler views of the PUBLIC page.
+    // A guest who RSVPs from an email link, or one who brings three others, adds
+    // attendees without adding views, so the ratio can exceed 100%. Reporting
+    // "300% of visitors are attending" reads as a broken statistic, so say what is
+    // actually true instead of printing a nonsense percentage.
     if (views > 0) {
-      lines.push(`Conversion: ${Math.round((going / views) * 100)}% of visitors are attending`);
+      if (going > views) {
+        lines.push(
+          `Conversion: more attendees (${going}) than page views (${views}) - ` +
+            "guests are arriving through direct links or as plus-ones rather than the public page"
+        );
+      } else {
+        lines.push(`Conversion: ${Math.round((going / views) * 100)}% of visitors are attending`);
+      }
     }
 
     return ok(lines.join("\n"));

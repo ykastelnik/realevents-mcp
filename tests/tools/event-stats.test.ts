@@ -126,6 +126,40 @@ describe("get_event_stats tool", () => {
     expect(textOf(result)).toContain("4 left");
   });
 
+  // "Going" is a head-count (confirmed rows plus everyone they bring) while
+  // page_views only counts non-crawler views of the PUBLIC page. A guest invited by
+  // email who RSVPs from a direct link, or one guest bringing three others, produces
+  // more attendees than views - so the ratio can legitimately exceed 100%. Printing
+  // "300% of visitors are attending" reads as a broken statistic.
+  it("does not present a conversion rate above 100%", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "GET", path: "/api/v1/manage/tok" })
+      .reply(200, {
+        event: makeEvent({ page_views: 2, registrations_count: 6 }),
+        registrations: [],
+        public_url: "/e/x",
+        manage_url: "/manage/tok"
+      });
+
+    const text = textOf(await handleGetEventStats({ manage_token: "tok" }));
+    expect(text).not.toMatch(/\b[1-9]\d{2,}%/);
+  });
+
+  it("still reports a normal conversion rate", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "GET", path: "/api/v1/manage/tok" })
+      .reply(200, {
+        event: makeEvent({ page_views: 100, registrations_count: 25 }),
+        registrations: [],
+        public_url: "/e/x",
+        manage_url: "/manage/tok"
+      });
+
+    expect(textOf(await handleGetEventStats({ manage_token: "tok" }))).toContain("25%");
+  });
+
   it("returns isError when the manage token is missing", async () => {
     const result = await handleGetEventStats({});
     expect(result.isError).toBe(true);
