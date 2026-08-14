@@ -37,7 +37,7 @@ jobs:
             echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
             echo '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
           ) | node dist/index.js | tail -1 > /tmp/tools.json
-          EXPECTED=$(jq -nc '["cancel_event","create_event","duplicate_event","get_event","get_event_stats","get_manage_event","list_comments","list_public_events","list_registrations","post_comment","register_for_event","update_event"] | sort')
+          EXPECTED=$(jq -nc '["cancel_event","create_event","duplicate_event","get_event","get_event_stats","get_manage_event","list_comments","list_public_events","list_registrations","post_comment","register_for_event","set_cover","update_event"] | sort')
           ACTUAL=$(jq -c '[.result.tools[].name] | sort' /tmp/tools.json)
           if [ "$ACTUAL" != "$EXPECTED" ]; then
             echo "FAIL: the exposed tool set changed."

@@ -35,6 +35,9 @@ export interface ApiEvent {
   plus_ones_detail?: PlusOnesDetail;
   page_views?: number;
   cover_image?: string | null;
+  /** Pixel size of the stored cover, read AFTER the server's resize. */
+  cover_width?: number | null;
+  cover_height?: number | null;
   theme?: string | null;
   listed?: boolean;
   organizer_email?: string | null;

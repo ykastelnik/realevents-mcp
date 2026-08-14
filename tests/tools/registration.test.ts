@@ -9,6 +9,7 @@ import { registerGetEventStats } from "../../src/tools/event-stats.js";
 import { registerGetManageEvent } from "../../src/tools/get-manage-event.js";
 import { registerListPublicEvents } from "../../src/tools/list-events.js";
 import { registerListRegistrations } from "../../src/tools/list-registrations.js";
+import { registerSetCover } from "../../src/tools/set-cover.js";
 import { registerForEvent } from "../../src/tools/register.js";
 import { registerUpdateEvent } from "../../src/tools/update-event.js";
 
@@ -21,7 +22,7 @@ function makeFakeServer(): FakeServer {
 }
 
 describe("tool registration", () => {
-  it("registers all twelve tools with the expected names and inputSchema fields", () => {
+  it("registers all thirteen tools with the expected names and inputSchema fields", () => {
     const server = makeFakeServer();
     const registrants = [
       {
@@ -43,7 +44,8 @@ describe("tool registration", () => {
       { fn: registerCancelEvent, name: "cancel_event", required: [] },
       { fn: registerDuplicateEvent, name: "duplicate_event", required: [] },
       { fn: registerListComments, name: "list_comments", required: ["before"] },
-      { fn: registerPostComment, name: "post_comment", required: ["body"] }
+      { fn: registerPostComment, name: "post_comment", required: ["body"] },
+      { fn: registerSetCover, name: "set_cover", required: ["image_url"] }
     ];
 
     for (const { fn, name, required } of registrants) {
@@ -63,7 +65,7 @@ describe("tool registration", () => {
       }
     }
 
-    expect(server.registerTool).toHaveBeenCalledTimes(12);
+    expect(server.registerTool).toHaveBeenCalledTimes(13);
   });
 
   it("create_event input schema does not include end_datetime", () => {
@@ -100,6 +102,7 @@ describe("tool registration", () => {
         "list_registrations",
         "post_comment",
         "register_for_event",
+        "set_cover",
         "update_event"
       ].sort()
     );

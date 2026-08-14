@@ -11,13 +11,14 @@ import { registerGetEventStats } from "./tools/event-stats.js";
 import { registerGetManageEvent } from "./tools/get-manage-event.js";
 import { registerListPublicEvents } from "./tools/list-events.js";
 import { registerListRegistrations } from "./tools/list-registrations.js";
+import { registerSetCover } from "./tools/set-cover.js";
 import { registerForEvent } from "./tools/register.js";
 import { registerUpdateEvent } from "./tools/update-event.js";
 
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "realevents",
-    version: "1.2.0"
+    version: "1.3.0"
   });
 
   registerCreateEvent(server);
@@ -32,6 +33,7 @@ export function createServer(): McpServer {
   registerDuplicateEvent(server);
   registerListComments(server);
   registerPostComment(server);
+  registerSetCover(server);
 
   return server;
 }

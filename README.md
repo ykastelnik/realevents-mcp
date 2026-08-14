@@ -46,12 +46,21 @@ Organizer tools, all requiring the manage token:
 | `update_event` | Change any event detail or setting. |
 | `duplicate_event` | Copy the event into a new draft one week later. |
 | `cancel_event` | Mark the event cancelled. The page stays online. |
+| `set_cover` | Set the cover image from a public image URL. |
 | `list_comments` | Read the guest conversation: questions, replies and reactions. |
 | `post_comment` | Post to the thread as the organizer. Visible to every guest who RSVPed. |
 
 Comments only work on events where the organizer has switched them on
 (`update_event` with `allow_comments: true`). Until then both comment tools return
 a message saying exactly that.
+
+### Cover images
+
+`set_cover` takes a **public image URL**, not a file. MCP tool arguments are JSON
+text, so an assistant cannot hand a local image to the server; if the picture is on
+the user's computer, the manage page's upload does the job better anyway (drag and
+drop, preview, crop). Around 1200px wide or more looks best - `set_cover` says so
+when the image is smaller rather than silently accepting a thumbnail.
 
 ### Timezones
 
