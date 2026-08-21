@@ -18,6 +18,7 @@ const UPDATABLE_KEYS = [
   "format",
   "status",
   "max_attendees",
+  "attendee_goal",
   "theme",
   "listed",
   "organizer_email",
@@ -49,6 +50,7 @@ export interface UpdateEventInput {
   format?: "in_person" | "virtual" | "hybrid";
   status?: "draft" | "published" | "cancelled";
   max_attendees?: number;
+  attendee_goal?: number;
   theme?: string;
   listed?: boolean;
   organizer_email?: string;
@@ -150,6 +152,12 @@ const inputSchema = {
     .optional()
     .describe("New event status (use 'cancelled' to cancel the event)"),
   max_attendees: z.number().int().min(1).optional().describe("New max attendees"),
+  attendee_goal: z
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .describe("Attendee goal: a target head-count to pace toward, separate from the max_attendees capacity limit"),
   theme: z.string().optional(),
   listed: z.boolean().optional().describe("Whether the event is listed in the public directory"),
   organizer_email: z.string().optional(),

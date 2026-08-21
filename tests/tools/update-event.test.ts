@@ -32,6 +32,29 @@ describe("update_event tool", () => {
     expect(text).toContain("https://realevents.co/manage/tok-abc");
   });
 
+  it("sends attendee_goal (a target, distinct from max_attendees) through to the manage API", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({
+        method: "PATCH",
+        path: "/api/v1/manage/tok-abc",
+        body: JSON.stringify({ event: { attendee_goal: 150 } })
+      })
+      .reply(200, {
+        event: makeEvent({ attendee_goal: 150 }),
+        public_url: "/e/x",
+        manage_url: "/manage/tok-abc"
+      });
+
+    const result = await handleUpdateEvent({
+      manage_token: "tok-abc",
+      attendee_goal: 150
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(textOf(result)).toContain("Updated fields: attendee_goal");
+  });
+
   it("falls back to REALEVENTS_MANAGE_TOKEN env var", async () => {
     process.env.REALEVENTS_MANAGE_TOKEN = "env-token";
     ctx.agent
