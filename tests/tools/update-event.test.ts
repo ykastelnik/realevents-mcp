@@ -162,27 +162,32 @@ describe("update_event tool", () => {
     expect(result.isError).toBeFalsy();
   });
 
-  // "responded" is RESERVED on the API and rejected there with a 422. The tool
-  // must not advertise it as an option: an assistant that reads it, sends it, and
-  // relays the failure has wasted the organizer's time on a setting the product
-  // never had. The type union is the guard; this pins the API's own refusal so
-  // the two cannot drift apart silently.
-  it("surfaces the API refusal if the reserved responded audience is forced through", async () => {
+  // v2: the reciprocity audience. The v1 test that pinned the API's 422 on this
+  // value is DELETED rather than weakened, as the spec required: it pinned a
+  // temporary refusal, not a rule.
+  it("sends the reciprocity audience", async () => {
     ctx.agent
       .get(TEST_API_HOST)
       .intercept({
         method: "PATCH",
         path: "/api/v1/manage/tok",
-        body: JSON.stringify({ event: { guest_list_audience: "responded" } })
+        body: JSON.stringify({
+          event: { guest_list_display_mode: "initials", guest_list_audience: "responded" }
+        })
       })
-      .reply(422, { error: "Validation failed", errors: ["Guest list audience is not included in the list"] });
+      .reply(200, {
+        event: makeEvent({ guest_list_display_mode: "initials", guest_list_audience: "responded" }),
+        public_url: "/e/x",
+        manage_url: "/manage/tok"
+      });
 
     const result = await handleUpdateEvent({
       manage_token: "tok",
-      guest_list_audience: "responded" as never
+      guest_list_display_mode: "initials",
+      guest_list_audience: "responded"
     });
 
-    expect(result.isError).toBe(true);
+    expect(result.isError).toBeFalsy();
   });
 
   // `false` and `0` are meaningful values here: dropping them (as a plain falsy

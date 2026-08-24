@@ -45,13 +45,12 @@ export interface ApiEvent {
   // either alone will mislead - an organizer who picked a format but left the
   // audience at "nobody" is publishing nothing.
   //
-  // "responded" (show the list to guests who have themselves answered) is
-  // RESERVED on the API and rejected there TODAY, but it is approved and coming.
-  // When it lands, add it to this union AND to the update_event enum in the same
-  // release, or an organizer's assistant will report an audience it cannot set.
-  // Do not add it before the API accepts it: the tool would hand back a 422.
+  // "responded" is the reciprocity audience: a guest sees who is coming once they
+  // have said whether they are. Entitlement is decided SERVER-SIDE from a
+  // per-event cookie, so an MCP client reading this event has no way to know
+  // whether a given guest would see the list, and must not imply otherwise.
   guest_list_display_mode?: "none" | "initials" | "first_names";
-  guest_list_audience?: "nobody" | "everyone";
+  guest_list_audience?: "nobody" | "responded" | "everyone";
   /** Public view only: the names the server chose to disclose, already
    *  formatted for the organizer's display mode. Empty whenever the requester is
    *  not entitled, which is the default for every event. Never contains a

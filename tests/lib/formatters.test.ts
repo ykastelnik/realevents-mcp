@@ -364,6 +364,23 @@ describe("formatManageEvent", () => {
     expect(out).toMatch(/anyone with the link/i);
   });
 
+  // The reciprocity audience publishes, but to a subset. Reporting it as either
+  // "only you" or "anyone with the link" would be wrong in opposite directions,
+  // and an organizer asking their assistant "who can see my guest list?" deserves
+  // the actual answer.
+  it("distinguishes the reciprocity audience from both extremes", () => {
+    const out = formatManageEvent(
+      makeEvent({ guest_list_display_mode: "initials", guest_list_audience: "responded" }),
+      [],
+      "tok123",
+      PUBLIC_BASE
+    );
+    expect(out).toMatch(/guest list/i);
+    expect(out).toMatch(/replied|RSVP/i);
+    expect(out).not.toMatch(/anyone with the link/i);
+    expect(out).not.toMatch(/only you/i);
+  });
+
   it("reports the default as off without demanding the organizer act", () => {
     const out = formatManageEvent(
       makeEvent({ guest_list_display_mode: "none", guest_list_audience: "nobody" }),

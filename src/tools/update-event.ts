@@ -65,7 +65,7 @@ export interface UpdateEventInput {
   allow_comments?: boolean;
   plus_ones_limit?: number;
   guest_list_display_mode?: "none" | "initials" | "first_names";
-  guest_list_audience?: "nobody" | "everyone";
+  guest_list_audience?: "nobody" | "responded" | "everyone";
   plus_ones_detail?: PlusOnesDetail;
 }
 
@@ -205,10 +205,9 @@ const inputSchema = {
   // guests only when BOTH permit it. An assistant that sets a format alone has
   // published nothing, which is the failure worth warning about up front.
   //
-  // "responded" is absent because the API rejects it TODAY, not because it is a
-  // bad idea: it is approved and coming. Add it here in the same release that
-  // ships it API-side, and delete the test pinning the 422 rather than weakening
-  // it.
+  // "responded" is the reciprocity audience, and the reason the two settings are
+  // described together: the list reaches guests only when a format is set AND the
+  // audience is not "nobody".
   guest_list_display_mode: z
     .enum(["none", "initials", "first_names"])
     .optional()
@@ -216,10 +215,10 @@ const inputSchema = {
       "What guests see of the confirmed guest list: nothing, initials (MD), or first names. Needs guest_list_audience set to 'everyone' to actually appear."
     ),
   guest_list_audience: z
-    .enum(["nobody", "everyone"])
+    .enum(["nobody", "responded", "everyone"])
     .optional()
     .describe(
-      "Who may see the guest list: 'nobody' (organizer only, the default) or 'everyone' with the link. Has no effect while guest_list_display_mode is 'none'."
+      "Who may see the guest list: 'nobody' (organizer only, the default), 'responded' (only guests who have themselves RSVPed, in any way), or 'everyone' with the link. Has no effect while guest_list_display_mode is 'none'."
     )
 };
 

@@ -1,6 +1,6 @@
 {
   "name": "realevents-mcp",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "mcpName": "io.github.ykastelnik/realevents",
   "description": "MCP server for RealEvents.co - create and manage events from your AI assistant",
   "type": "module",

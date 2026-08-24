@@ -167,11 +167,18 @@ export function formatRegistrations(registrations: ApiRegistration[]): string {
 function guestListLine(event: ApiEvent): string {
   const mode = event.guest_list_display_mode ?? "none";
   const audience = event.guest_list_audience ?? "nobody";
-  if (mode === "none" || audience !== "everyone") {
+  if (mode === "none" || audience === "nobody") {
     return "Guest list: only you (guests do not see who is coming)";
   }
   const shown = mode === "initials" ? "initials" : "first names";
-  return `Guest list: anyone with the link sees ${shown} of confirmed guests`;
+  // "responded" publishes, but to a subset. Reporting it as either extreme would
+  // be wrong in opposite directions, and "who can see my guest list?" is exactly
+  // the question an organizer asks an assistant before deciding to turn it on.
+  const who =
+    audience === "responded"
+      ? "guests who have replied see"
+      : "anyone with the link sees";
+  return `Guest list: ${who} ${shown} of confirmed guests`;
 }
 
 export function formatManageEvent(
