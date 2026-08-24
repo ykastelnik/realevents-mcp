@@ -31,6 +31,15 @@ export interface ApiEvent {
   allow_notes?: boolean;
   allow_comments?: boolean;
   /** 0 disables plus-ones entirely. */
+  // The organizer's RSVP cutoff and whether it has passed. Both are read-only
+  // here: letting an MCP call CLOSE registrations is a near-destructive action
+  // that earns its own error surface and tests in a dedicated release.
+  // Settable through update_event since 1.4.0, but never read back until 1.5.0:
+  // an assistant could write a goal and then not see it, so it had no way to
+  // report progress against the number it had just set.
+  attendee_goal?: number | null;
+  rsvp_deadline_at?: string | null;
+  registrations_closed?: boolean;
   plus_ones_limit?: number;
   plus_ones_detail?: PlusOnesDetail;
   page_views?: number;

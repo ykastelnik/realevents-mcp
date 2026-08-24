@@ -97,6 +97,20 @@ export function formatEvent(event: ApiEvent, publicBase: string): string {
     const detail = event.plus_ones_detail === "names" ? "names required" : "count only";
     lines.push(`Plus-ones: up to ${event.plus_ones_limit} per guest (${detail})`);
   }
+  // The deadline, and whether it has already passed. Without this an assistant
+  // cannot know registrations are closed: it calls register_for_event, gets a
+  // 422, and reports a failure it could have predicted from the event it just
+  // read. "Closed" wins over the cap for the same reason it does on the page:
+  // it is the organizer's decision, not a computed condition.
+  if (event.registrations_closed) {
+    lines.push(
+      event.rsvp_deadline_at
+        ? `Registrations closed (RSVP deadline was ${formatDate(event.rsvp_deadline_at, event.timezone)})`
+        : "Registrations closed"
+    );
+  } else if (event.rsvp_deadline_at) {
+    lines.push(`RSVP by ${formatDate(event.rsvp_deadline_at, event.timezone)}`);
+  }
   lines.push(`Status: ${event.status}`);
 
   if (event.description) {
@@ -155,6 +169,19 @@ export function formatManageEvent(
   if (event.location) lines.push(`Location: ${event.location}`);
   if (event.virtual_link) lines.push(`Virtual link: ${event.virtual_link}`);
   if (event.max_attendees != null) lines.push(`Max attendees: ${event.max_attendees}`);
+  // Organizer-only, both of them. The goal is a private target, not something a
+  // guest reading the public page should see, and the deadline is repeated here
+  // so the organizer's own view answers "is it still open?" without a second call.
+  if (event.attendee_goal != null) lines.push(`Attendee goal: ${event.attendee_goal}`);
+  if (event.registrations_closed) {
+    lines.push(
+      event.rsvp_deadline_at
+        ? `Registrations closed (RSVP deadline was ${formatDate(event.rsvp_deadline_at, event.timezone)})`
+        : "Registrations closed"
+    );
+  } else if (event.rsvp_deadline_at) {
+    lines.push(`RSVP by ${formatDate(event.rsvp_deadline_at, event.timezone)}`);
+  }
   if (event.organizer_email) lines.push(`Organizer email: ${event.organizer_email}`);
   lines.push(attendanceLine(event));
 

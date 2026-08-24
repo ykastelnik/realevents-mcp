@@ -111,6 +111,34 @@ describe("formatDate", () => {
 });
 
 describe("formatEvent", () => {
+  // The RSVP deadline shipped to the API on 2026-08-21 and the MCP never learned
+  // about it. Without it an assistant cannot know registrations are closed: it
+  // calls register_for_event, gets a 422, and reports a failure it could have
+  // predicted. Reading state is exactly what these tools are for.
+  it("says when RSVPs close, so an assistant can see it coming", () => {
+    const out = formatEvent(
+      makeEvent({ rsvp_deadline_at: "2026-09-01T17:00:00Z", registrations_closed: false }),
+      PUBLIC_BASE
+    );
+    expect(out).toContain("RSVP by");
+  });
+
+  it("says plainly when registrations are already closed", () => {
+    const out = formatEvent(
+      makeEvent({ rsvp_deadline_at: "2026-08-01T17:00:00Z", registrations_closed: true }),
+      PUBLIC_BASE
+    );
+    expect(out).toContain("Registrations closed");
+    // The deadline that caused it stays visible, so the assistant can tell the
+    // user WHEN it closed rather than only that it did.
+    expect(out).toMatch(/closed/i);
+  });
+
+  it("says nothing about a deadline on an event that has none", () => {
+    const out = formatEvent(makeEvent(), PUBLIC_BASE);
+    expect(out).not.toMatch(/RSVP by|Registrations closed/);
+  });
+
   it("renders all populated fields", () => {
     const event = makeEvent({
       location: "Palais de la Bourse, Bordeaux",
@@ -263,6 +291,26 @@ describe("formatRegistrations", () => {
 });
 
 describe("formatManageEvent", () => {
+  // The organizer's own view. attendee_goal has been settable through
+  // update_event since 1.4.0 but was never READ back, so an assistant could set
+  // a goal and then not see it - it had no way to report progress against the
+  // number it had just written.
+  it("shows the attendee goal it can already set", () => {
+    const out = formatManageEvent(makeEvent({ attendee_goal: 80 }), [], "tok123", PUBLIC_BASE);
+    expect(out).toContain("80");
+    expect(out).toMatch(/goal/i);
+  });
+
+  it("shows the RSVP deadline to the organizer too", () => {
+    const out = formatManageEvent(
+      makeEvent({ rsvp_deadline_at: "2026-09-01T17:00:00Z", registrations_closed: false }),
+      [],
+      "tok123",
+      PUBLIC_BASE
+    );
+    expect(out).toMatch(/RSVP by/);
+  });
+
   it("renders the manage view with registrations and links", () => {
     const event = makeEvent({
       location: "Bordeaux",
