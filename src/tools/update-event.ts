@@ -205,10 +205,10 @@ const inputSchema = {
   // guests only when BOTH permit it. An assistant that sets a format alone has
   // published nothing, which is the failure worth warning about up front.
   //
-  // "responded" is deliberately absent from the audience enum. The API reserves
-  // it and rejects it, because the only ways the public page recognises a guest
-  // are a forwardable edit link and a per-browser cookie, neither sound enough
-  // to gate a privacy decision on.
+  // "responded" is absent because the API rejects it TODAY, not because it is a
+  // bad idea: it is approved and coming. Add it here in the same release that
+  // ships it API-side, and delete the test pinning the 422 rather than weakening
+  // it.
   guest_list_display_mode: z
     .enum(["none", "initials", "first_names"])
     .optional()

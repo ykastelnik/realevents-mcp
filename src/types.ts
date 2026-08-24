@@ -46,10 +46,10 @@ export interface ApiEvent {
   // audience at "nobody" is publishing nothing.
   //
   // "responded" (show the list to guests who have themselves answered) is
-  // RESERVED on the API and deliberately unimplemented: the only identity
-  // signals on the public page are a forwardable edit link and a per-browser
-  // cookie, neither sound enough to gate a privacy decision on. The API rejects
-  // the value, so do not offer it here.
+  // RESERVED on the API and rejected there TODAY, but it is approved and coming.
+  // When it lands, add it to this union AND to the update_event enum in the same
+  // release, or an organizer's assistant will report an audience it cannot set.
+  // Do not add it before the API accepts it: the tool would hand back a 422.
   guest_list_display_mode?: "none" | "initials" | "first_names";
   guest_list_audience?: "nobody" | "everyone";
   /** Public view only: the names the server chose to disclose, already
