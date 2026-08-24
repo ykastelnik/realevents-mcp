@@ -291,6 +291,32 @@ describe("formatRegistrations", () => {
 });
 
 describe("formatManageEvent", () => {
+  // The public view carries the names the SERVER chose to disclose. The MCP must
+  // never re-derive entitlement from the two settings: the server already
+  // decided, and an empty list means "nothing to show", never "hidden by us".
+  it("lists the guests the server disclosed", () => {
+    const out = formatEvent(
+      makeEvent({ guest_list: ["Marie", "Jean"], guest_list_plus_ones: 0 }),
+      PUBLIC_BASE
+    );
+    expect(out).toContain("Marie");
+    expect(out).toContain("Jean");
+  });
+
+  it("carries plus-ones as an anonymous count beside the names", () => {
+    const out = formatEvent(
+      makeEvent({ guest_list: ["Marie"], guest_list_plus_ones: 3 }),
+      PUBLIC_BASE
+    );
+    expect(out).toContain("Marie");
+    expect(out).toMatch(/\+3|3 plus/i);
+  });
+
+  it("says nothing about a guest list when the server disclosed none", () => {
+    const out = formatEvent(makeEvent({ guest_list: [], guest_list_plus_ones: 0 }), PUBLIC_BASE);
+    expect(out).not.toMatch(/guest list|attending:/i);
+  });
+
   // The organizer's own view. attendee_goal has been settable through
   // update_event since 1.4.0 but was never READ back, so an assistant could set
   // a goal and then not see it - it had no way to report progress against the
@@ -309,6 +335,44 @@ describe("formatManageEvent", () => {
       PUBLIC_BASE
     );
     expect(out).toMatch(/RSVP by/);
+  });
+
+  // Guest list visibility. TWO settings gate one outcome, so the manage view has
+  // to state the OUTCOME rather than echo a column: an organizer who picked a
+  // format but left the audience at "nobody" is publishing nothing, and an
+  // assistant reporting "initials" there would be wrong in the way that matters.
+  it("says the guest list is private when only a format is set", () => {
+    const out = formatManageEvent(
+      makeEvent({ guest_list_display_mode: "initials", guest_list_audience: "nobody" }),
+      [],
+      "tok123",
+      PUBLIC_BASE
+    );
+    expect(out).toMatch(/guest list/i);
+    expect(out).toMatch(/only you|not shown|private/i);
+  });
+
+  it("says who sees the guest list and in what format when it is published", () => {
+    const out = formatManageEvent(
+      makeEvent({ guest_list_display_mode: "first_names", guest_list_audience: "everyone" }),
+      [],
+      "tok123",
+      PUBLIC_BASE
+    );
+    expect(out).toMatch(/guest list/i);
+    expect(out).toMatch(/first names/i);
+    expect(out).toMatch(/anyone with the link/i);
+  });
+
+  it("reports the default as off without demanding the organizer act", () => {
+    const out = formatManageEvent(
+      makeEvent({ guest_list_display_mode: "none", guest_list_audience: "nobody" }),
+      [],
+      "tok123",
+      PUBLIC_BASE
+    );
+    expect(out).toMatch(/guest list/i);
+    expect(out).toMatch(/only you|not shown|private/i);
   });
 
   it("renders the manage view with registrations and links", () => {

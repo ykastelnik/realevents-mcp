@@ -111,6 +111,16 @@ export function formatEvent(event: ApiEvent, publicBase: string): string {
   } else if (event.rsvp_deadline_at) {
     lines.push(`RSVP by ${formatDate(event.rsvp_deadline_at, event.timezone)}`);
   }
+  // The guest list, exactly as the server chose to disclose it. Never re-derive
+  // entitlement from the two settings here: the server already applied them, so
+  // an empty list means "nothing to show", never "hidden by us". Plus-ones are a
+  // count and never names, because a plus-one's name was typed by the guest
+  // bringing them and they never agreed to it being published.
+  if (event.guest_list?.length) {
+    const plusOnes = event.guest_list_plus_ones ?? 0;
+    const extra = plusOnes > 0 ? ` (+${plusOnes} unnamed plus-${plusOnes === 1 ? "one" : "ones"})` : "";
+    lines.push(`Attending: ${event.guest_list.join(", ")}${extra}`);
+  }
   lines.push(`Status: ${event.status}`);
 
   if (event.description) {
@@ -150,6 +160,20 @@ export function formatRegistrations(registrations: ApiRegistration[]): string {
     .join("\n");
 }
 
+// Two settings gate one outcome, so report the OUTCOME. Echoing a single column
+// misleads in the case that matters most: an organizer who chose a format but
+// left the audience at "nobody" is publishing nothing, and an assistant telling
+// them "initials" would be describing a list no guest can see.
+function guestListLine(event: ApiEvent): string {
+  const mode = event.guest_list_display_mode ?? "none";
+  const audience = event.guest_list_audience ?? "nobody";
+  if (mode === "none" || audience !== "everyone") {
+    return "Guest list: only you (guests do not see who is coming)";
+  }
+  const shown = mode === "initials" ? "initials" : "first names";
+  return `Guest list: anyone with the link sees ${shown} of confirmed guests`;
+}
+
 export function formatManageEvent(
   event: ApiEvent,
   registrations: ApiRegistration[],
@@ -182,6 +206,7 @@ export function formatManageEvent(
   } else if (event.rsvp_deadline_at) {
     lines.push(`RSVP by ${formatDate(event.rsvp_deadline_at, event.timezone)}`);
   }
+  lines.push(guestListLine(event));
   if (event.organizer_email) lines.push(`Organizer email: ${event.organizer_email}`);
   lines.push(attendanceLine(event));
 

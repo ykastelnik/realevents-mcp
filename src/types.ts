@@ -40,6 +40,25 @@ export interface ApiEvent {
   attendee_goal?: number | null;
   rsvp_deadline_at?: string | null;
   registrations_closed?: boolean;
+  // Guest list visibility. TWO settings gate one outcome: a list reaches guests
+  // only when display_mode is not "none" AND audience is "everyone". Reading
+  // either alone will mislead - an organizer who picked a format but left the
+  // audience at "nobody" is publishing nothing.
+  //
+  // "responded" (show the list to guests who have themselves answered) is
+  // RESERVED on the API and deliberately unimplemented: the only identity
+  // signals on the public page are a forwardable edit link and a per-browser
+  // cookie, neither sound enough to gate a privacy decision on. The API rejects
+  // the value, so do not offer it here.
+  guest_list_display_mode?: "none" | "initials" | "first_names";
+  guest_list_audience?: "nobody" | "everyone";
+  /** Public view only: the names the server chose to disclose, already
+   *  formatted for the organizer's display mode. Empty whenever the requester is
+   *  not entitled, which is the default for every event. Never contains a
+   *  plus-one's name: those were typed by a third party who never consented, so
+   *  they are carried as guest_list_plus_ones instead. */
+  guest_list?: string[];
+  guest_list_plus_ones?: number;
   plus_ones_limit?: number;
   plus_ones_detail?: PlusOnesDetail;
   page_views?: number;

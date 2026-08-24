@@ -30,7 +30,9 @@ const UPDATABLE_KEYS = [
   "allow_notes",
   "allow_comments",
   "plus_ones_limit",
-  "plus_ones_detail"
+  "plus_ones_detail",
+  "guest_list_display_mode",
+  "guest_list_audience"
 ] as const;
 
 type UpdatableKey = (typeof UPDATABLE_KEYS)[number];
@@ -62,6 +64,8 @@ export interface UpdateEventInput {
   allow_notes?: boolean;
   allow_comments?: boolean;
   plus_ones_limit?: number;
+  guest_list_display_mode?: "none" | "initials" | "first_names";
+  guest_list_audience?: "nobody" | "everyone";
   plus_ones_detail?: PlusOnesDetail;
 }
 
@@ -196,7 +200,27 @@ const inputSchema = {
   plus_ones_detail: z
     .enum(["count_only", "names"])
     .optional()
-    .describe("Whether guests give a headcount only, or name each person they bring")
+    .describe("Whether guests give a headcount only, or name each person they bring"),
+  // Two settings gate one outcome, so the descriptions say so: a list reaches
+  // guests only when BOTH permit it. An assistant that sets a format alone has
+  // published nothing, which is the failure worth warning about up front.
+  //
+  // "responded" is deliberately absent from the audience enum. The API reserves
+  // it and rejects it, because the only ways the public page recognises a guest
+  // are a forwardable edit link and a per-browser cookie, neither sound enough
+  // to gate a privacy decision on.
+  guest_list_display_mode: z
+    .enum(["none", "initials", "first_names"])
+    .optional()
+    .describe(
+      "What guests see of the confirmed guest list: nothing, initials (MD), or first names. Needs guest_list_audience set to 'everyone' to actually appear."
+    ),
+  guest_list_audience: z
+    .enum(["nobody", "everyone"])
+    .optional()
+    .describe(
+      "Who may see the guest list: 'nobody' (organizer only, the default) or 'everyone' with the link. Has no effect while guest_list_display_mode is 'none'."
+    )
 };
 
 export function registerUpdateEvent(server: McpServer): void {

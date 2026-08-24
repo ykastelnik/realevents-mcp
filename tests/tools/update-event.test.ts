@@ -131,6 +131,60 @@ describe("update_event tool", () => {
     expect(result.isError).toBeFalsy();
   });
 
+  // Guest list visibility is writable because the API permits both columns and an
+  // organizer asking an assistant to "show first names to everyone" should not
+  // have to open the settings page. Both keys travel together in one PATCH:
+  // sending only one leaves the other at its stored value, which is exactly how
+  // an organizer ends up publishing nothing (or, worse, publishing under a format
+  // they did not choose).
+  it("sends both guest list settings together", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({
+        method: "PATCH",
+        path: "/api/v1/manage/tok",
+        body: JSON.stringify({
+          event: { guest_list_display_mode: "first_names", guest_list_audience: "everyone" }
+        })
+      })
+      .reply(200, {
+        event: makeEvent({ guest_list_display_mode: "first_names", guest_list_audience: "everyone" }),
+        public_url: "/e/x",
+        manage_url: "/manage/tok"
+      });
+
+    const result = await handleUpdateEvent({
+      manage_token: "tok",
+      guest_list_display_mode: "first_names",
+      guest_list_audience: "everyone"
+    });
+
+    expect(result.isError).toBeFalsy();
+  });
+
+  // "responded" is RESERVED on the API and rejected there with a 422. The tool
+  // must not advertise it as an option: an assistant that reads it, sends it, and
+  // relays the failure has wasted the organizer's time on a setting the product
+  // never had. The type union is the guard; this pins the API's own refusal so
+  // the two cannot drift apart silently.
+  it("surfaces the API refusal if the reserved responded audience is forced through", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({
+        method: "PATCH",
+        path: "/api/v1/manage/tok",
+        body: JSON.stringify({ event: { guest_list_audience: "responded" } })
+      })
+      .reply(422, { error: "Validation failed", errors: ["Guest list audience is not included in the list"] });
+
+    const result = await handleUpdateEvent({
+      manage_token: "tok",
+      guest_list_audience: "responded" as never
+    });
+
+    expect(result.isError).toBe(true);
+  });
+
   // `false` and `0` are meaningful values here: dropping them (as a plain falsy
   // filter does) would make it impossible to turn a setting off or disable plus-ones.
   it("sends falsy-but-meaningful values instead of dropping them", async () => {
