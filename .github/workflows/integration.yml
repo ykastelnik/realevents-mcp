@@ -14,7 +14,7 @@ jobs:
       # stay skipped rather than failing on a repo that has no smoke manage token.
       SMOKE_MANAGE_TOKEN: ${{ secrets.SMOKE_MANAGE_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
