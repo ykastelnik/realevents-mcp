@@ -25,6 +25,14 @@ Documentation and install snippets: https://realevents.co/mcp
 
 For Claude Desktop on macOS, the config file is at `~/Library/Application Support/Claude/claude_desktop_config.json`. For other clients, see their MCP documentation.
 
+## Agent skill
+
+[`skills/realevents/SKILL.md`](skills/realevents/SKILL.md) teaches an assistant when
+and how to use these tools: creating an event with the right timezone, handing back
+the manage link, and the head-count and guest-list rules below. Copy the
+`skills/realevents` folder into your client's skills directory (for Claude Code,
+`~/.claude/skills/`) alongside the server config above.
+
 ## Tools
 
 Public, no token needed:
