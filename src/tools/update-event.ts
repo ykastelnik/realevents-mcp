@@ -161,7 +161,9 @@ const inputSchema = {
     .int()
     .min(1)
     .optional()
-    .describe("Attendee goal: a target head-count to pace toward, separate from the max_attendees capacity limit"),
+    .describe(
+      "Attendee goal: a target head-count to pace toward, separate from the max_attendees capacity limit"
+    ),
   theme: z.string().optional(),
   listed: z.boolean().optional().describe("Whether the event is listed in the public directory"),
   organizer_email: z.string().optional(),
