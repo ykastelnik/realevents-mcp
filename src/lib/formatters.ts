@@ -118,7 +118,8 @@ export function formatEvent(event: ApiEvent, publicBase: string): string {
   // bringing them and they never agreed to it being published.
   if (event.guest_list?.length) {
     const plusOnes = event.guest_list_plus_ones ?? 0;
-    const extra = plusOnes > 0 ? ` (+${plusOnes} unnamed plus-${plusOnes === 1 ? "one" : "ones"})` : "";
+    const extra =
+      plusOnes > 0 ? ` (+${plusOnes} unnamed plus-${plusOnes === 1 ? "one" : "ones"})` : "";
     lines.push(`Attending: ${event.guest_list.join(", ")}${extra}`);
   }
   lines.push(`Status: ${event.status}`);
@@ -175,9 +176,7 @@ function guestListLine(event: ApiEvent): string {
   // be wrong in opposite directions, and "who can see my guest list?" is exactly
   // the question an organizer asks an assistant before deciding to turn it on.
   const who =
-    audience === "responded"
-      ? "guests who have replied see"
-      : "anyone with the link sees";
+    audience === "responded" ? "guests who have replied see" : "anyone with the link sees";
   return `Guest list: ${who} ${shown} of confirmed guests`;
 }
 

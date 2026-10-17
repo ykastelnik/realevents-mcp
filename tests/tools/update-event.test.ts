@@ -148,7 +148,10 @@ describe("update_event tool", () => {
         })
       })
       .reply(200, {
-        event: makeEvent({ guest_list_display_mode: "first_names", guest_list_audience: "everyone" }),
+        event: makeEvent({
+          guest_list_display_mode: "first_names",
+          guest_list_audience: "everyone"
+        }),
         public_url: "/e/x",
         manage_url: "/manage/tok"
       });
