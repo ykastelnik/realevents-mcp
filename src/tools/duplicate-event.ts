@@ -29,12 +29,11 @@ export async function handleDuplicateEvent(input: DuplicateEventInput): Promise<
         `Copied "${data.event.title}".`,
         `New date: ${formatDate(data.event.start_datetime, data.event.timezone)}`,
         "",
-        // The API deliberately creates the copy as a draft one week later, so it is
-        // not publicly reachable until the organizer publishes it. Saying so stops a
-        // caller handing out a link that 404s.
-        "The copy is a DRAFT scheduled one week after the original, so it is not",
-        "public yet. Adjust the date and title, then publish it with update_event",
-        "(status 'published').",
+        // The API deliberately creates the copy as a draft, so it is not publicly
+        // reachable until the organizer publishes it. Saying so stops a caller
+        // handing out a link that 404s.
+        "The copy is a DRAFT with no guests, so it is not public yet. Check the",
+        "date and title, then publish it with update_event (status 'published').",
         "",
         `Manage link: ${base}${data.manage_url}`,
         "Save this link - the copy has its own manage token, separate from the original."
@@ -55,10 +54,12 @@ export function registerDuplicateEvent(server: McpServer): void {
     "duplicate_event",
     {
       description: [
-        "Copy an existing event into a new draft, dated one week later, keeping its",
-        "description, location and settings. Use this for \"set up next month's",
-        'meetup like this one". Guests are NOT copied. Returns a new manage link;',
-        "the copy must be published with update_event before anyone can see it."
+        "Copy an existing event into a new draft with its description, location and",
+        "settings: an upcoming event a week later, a past one to its next same weekday",
+        "and time (in the event's timezone, after now). End time and RSVP deadline keep",
+        'their offset. Use this for "set up the next meetup like this one". Guests are',
+        "NOT copied. Returns a new manage link; the copy must be published with",
+        "update_event before anyone can see it."
       ].join(" "),
       inputSchema
     },

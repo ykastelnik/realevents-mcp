@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { handleDuplicateEvent } from "../../src/tools/duplicate-event.js";
+import { describe, expect, it, vi } from "vitest";
+import { handleDuplicateEvent, registerDuplicateEvent } from "../../src/tools/duplicate-event.js";
 import { makeEvent, setupMockApi, TEST_API_HOST, textOf } from "../helpers/mock-fetch.js";
 
 describe("duplicate_event tool", () => {
@@ -24,7 +24,35 @@ describe("duplicate_event tool", () => {
     expect(text).toMatch(/save|manage link/i);
   });
 
-  // The API creates the copy as a draft, one week out. A caller that assumes the
+  // The API dates an upcoming event's copy a week later, but a past event's copy
+  // goes to its next same weekday and time. A description that only says "a week
+  // later" makes a caller promise the organizer a date already in the past.
+  it("describes the schedule for upcoming and past events", () => {
+    const server = { registerTool: vi.fn() };
+    registerDuplicateEvent(server as never);
+    const [, config] = server.registerTool.mock.calls[0] as [string, { description: string }];
+    expect(config.description).toMatch(/upcoming event a week later/i);
+    expect(config.description).toMatch(/past one to its next same weekday and time/i);
+  });
+
+  // A past event's copy is not one week after the original, so the reply must not
+  // claim it is: it shows the real new date instead.
+  it("does not claim a past event's copy is one week after the original", async () => {
+    ctx.agent
+      .get(TEST_API_HOST)
+      .intercept({ method: "POST", path: "/api/v1/manage/tok/duplicate" })
+      .reply(201, {
+        event: makeEvent({ status: "draft" }),
+        manage_url: "/manage/new-tok",
+        has_organizer_email: false
+      });
+
+    const result = await handleDuplicateEvent({ manage_token: "tok" });
+    expect(textOf(result)).not.toMatch(/one week after/i);
+    expect(textOf(result)).toMatch(/New date:/);
+  });
+
+  // The API creates the copy as a draft. A caller that assumes the
   // duplicate is live would tell the organizer to share a link that 404s publicly.
   it("says the copy is a draft that still needs publishing", async () => {
     ctx.agent
