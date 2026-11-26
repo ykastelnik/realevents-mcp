@@ -52,7 +52,7 @@ Organizer tools, all requiring the manage token:
 | `list_registrations` | The guest list on its own, optionally filtered to confirmed / maybe / declined. |
 | `get_event_stats` | Page views, head-count, remaining capacity, view-to-attendance rate. |
 | `update_event` | Change any event detail or setting. |
-| `duplicate_event` | Copy the event into a new draft one week later. |
+| `duplicate_event` | Copy the event into a new draft: an upcoming event a week later, a past one to its next same weekday and time. |
 | `cancel_event` | Mark the event cancelled. The page stays online. |
 | `set_cover` | Set the cover image from a public image URL. |
 | `list_comments` | Read the guest conversation: questions, replies and reactions. |

@@ -53,7 +53,8 @@ media. That is how guests arrive.
 - How it is going: `get_event_stats` (page views, head-count, places left).
 - Guest questions: `list_comments`, and `post_comment` to answer as the
   organizer. Comments only work once `allow_comments` is on.
-- Same event next week: `duplicate_event` creates a copy one week later.
+- Same event again: `duplicate_event` creates a draft copy, an upcoming event a
+  week later, a past one on its next same weekday and time.
 - Cancel: `cancel_event`. The page stays online and says it is cancelled.
 - RSVP on someone's behalf: `register_for_event` with the event slug, after
   confirming name, email and answer with the person.
