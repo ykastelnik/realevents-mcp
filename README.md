@@ -41,7 +41,7 @@ Public, no token needed:
 |------|-------------|
 | `list_public_events` | Browse upcoming public events. Filter by format, date range or search term. |
 | `get_event` | Get an event's public details by slug. Follows old links after a slug change. |
-| `register_for_event` | RSVP for an attendee: going, maybe or not going, with plus-ones and a note. |
+| `register_for_event` | RSVP for an attendee: going, maybe or not going, with plus-ones and a note. If the address has already replied, the reply is left unchanged and the guest is emailed a link to change it themselves. |
 | `create_event` | Create a new event page. Returns the public link and the manage link. |
 
 Organizer tools, all requiring the manage token:
