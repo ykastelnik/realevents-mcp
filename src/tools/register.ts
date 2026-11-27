@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { apiCall } from "../lib/api-client.js";
 import { formatDate } from "../lib/formatters.js";
 import { ok, publicBase, runTool, type ToolResult } from "../lib/tool-runtime.js";
-import type { ApiRegisterResponse, RsvpStatus } from "../types.js";
+import type { ApiRegisterCheckEmailResponse, ApiRegisterResponse, RsvpStatus } from "../types.js";
 
 export interface RegisterInput {
   slug: string;
@@ -36,9 +36,28 @@ function buildRegistrationBody(input: RegisterInput): Record<string, unknown> {
 export async function handleRegisterForEvent(input: RegisterInput): Promise<ToolResult> {
   return runTool(async () => {
     const sent = buildRegistrationBody(input);
-    const data = await apiCall<ApiRegisterResponse>("POST", `/events/${input.slug}/registrations`, {
-      body: { registration: sent }
-    });
+    const data = await apiCall<ApiRegisterResponse | ApiRegisterCheckEmailResponse>(
+      "POST",
+      `/events/${input.slug}/registrations`,
+      { body: { registration: sent } }
+    );
+
+    // 202 check_your_email: this address already replied. An email alone is not proof
+    // of identity, and this tool sends no registration_token or invitation_token on
+    // purpose, so the API changed nothing and mailed the real guest an edit link.
+    // Report what the API did, not what was asked.
+    if (!("registration" in data)) {
+      return ok(
+        [
+          `${input.email} has already replied to this event.`,
+          "The existing reply was not changed.",
+          "The guest has been sent an email with a link to change their reply themselves.",
+          "Nothing more can be done from here: do not retry, and do not report this as a failure.",
+          "",
+          `Public link: ${publicBase()}/e/${input.slug}`
+        ].join("\n")
+      );
+    }
 
     const namePart = [data.registration.first_name, data.registration.last_name]
       .filter(Boolean)
@@ -140,7 +159,10 @@ export function registerForEvent(server: McpServer): void {
         "Capacity is counted in PEOPLE, not rows: a guest bringing 3 others takes 4",
         "places, so a party can be refused on an event that still shows free seats.",
         "If the call is refused for capacity, the error states how many places remain -",
-        "retry with a smaller party rather than reporting failure."
+        "retry with a smaller party rather than reporting failure.",
+        "If the email address has already replied, the existing reply is NOT changed:",
+        "the guest is emailed a link to change it themselves, and the tool says so.",
+        "Do not retry; this is not a failure."
       ].join(" "),
       inputSchema
     },

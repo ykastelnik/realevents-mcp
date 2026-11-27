@@ -129,6 +129,13 @@ export interface ApiRegisterResponse {
   virtual_link?: string | null;
 }
 
+/** 202 from POST /events/:slug/registrations: the address already replied and the
+ * request carried no proof (registration_token / invitation_token). Nothing was
+ * changed; the guest was emailed an edit link. There is no `registration`. */
+export interface ApiRegisterCheckEmailResponse {
+  status: "check_your_email";
+}
+
 export interface ApiCommentReaction {
   emoji: string;
   count: number;
