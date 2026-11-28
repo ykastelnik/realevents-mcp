@@ -389,4 +389,68 @@ describe("register_for_event tool", () => {
     expect(result.isError).toBe(true);
     expect(textOf(result)).toContain("already registered");
   });
+
+  // Cockpit #721420: an email that already replied needs proof (registration_token or
+  // invitation_token) to be rewritten. The tool sends none, so the API answers 202
+  // check_your_email with no registration and mails the real guest an edit link.
+  describe("when the address has already replied (202 check_your_email)", () => {
+    const interceptAlreadyReplied = (): void => {
+      ctx.agent
+        .get(TEST_API_HOST)
+        .intercept({ method: "POST", path: "/api/v1/events/test/registrations" })
+        .reply(202, { status: "check_your_email" });
+    };
+
+    it("explains that nothing changed and that the guest got an email", async () => {
+      interceptAlreadyReplied();
+
+      const result = await handleRegisterForEvent({
+        slug: "test",
+        email: "x@y.com",
+        first_name: "Ana",
+        status: "declined"
+      });
+
+      expect(result.isError).toBeFalsy();
+      const text = textOf(result);
+      expect(text).toContain("x@y.com");
+      expect(text).toContain("already replied");
+      expect(text).toContain("not changed");
+      expect(text).toContain("email");
+      expect(text).toContain("https://realevents.co/e/test");
+    });
+
+    it("does not claim a registration or a status", async () => {
+      interceptAlreadyReplied();
+
+      const text = textOf(
+        await handleRegisterForEvent({ slug: "test", email: "x@y.com", first_name: "Ana" })
+      );
+
+      expect(text).not.toMatch(/is registered/);
+      expect(text).not.toMatch(/responded/);
+      expect(text).not.toMatch(/Status:/);
+      expect(text).not.toMatch(/Bringing:/);
+    });
+
+    it("never sends a token to get around the check", async () => {
+      ctx.agent
+        .get(TEST_API_HOST)
+        .intercept({
+          method: "POST",
+          path: "/api/v1/events/test/registrations",
+          // Exact body: no registration_token or invitation_token at the top level.
+          body: JSON.stringify({ registration: { email: "x@y.com", first_name: "Ana" } })
+        })
+        .reply(202, { status: "check_your_email" });
+
+      const result = await handleRegisterForEvent({
+        slug: "test",
+        email: "x@y.com",
+        first_name: "Ana"
+      });
+
+      expect(textOf(result)).toContain("already replied");
+    });
+  });
 });

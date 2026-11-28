@@ -56,7 +56,9 @@ media. That is how guests arrive.
 - Same event next week: `duplicate_event` creates a copy one week later.
 - Cancel: `cancel_event`. The page stays online and says it is cancelled.
 - RSVP on someone's behalf: `register_for_event` with the event slug, after
-  confirming name, email and answer with the person.
+  confirming name, email and answer with the person. If that address has
+  already replied, nothing changes: the guest is emailed a link to edit their
+  reply themselves. Say so, do not retry.
 - Find events to join: `list_public_events`, then `get_event` for details.
 
 ## Things to get right

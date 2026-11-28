@@ -15,19 +15,13 @@
 
 import { execFileSync } from "node:child_process";
 
-// Unreachable-by-construction: this server speaks stdio only. It imports exactly
-// two SDK entry points (server/mcp.js and server/stdio.js) and never loads the
-// SDK's HTTP transport, so hono / @hono/node-server / ajv / express-rate-limit and
-// their dependencies are present in the tree but never executed.
+// Currently empty: every advisory that was allowed here (hono, fast-uri,
+// ip-address, all via the SDK's HTTP transport) is fixed in the lockfile.
 //
-// Re-check when @modelcontextprotocol/sdk publishes a fix: drop the entry, do not
-// extend it. Adding a package here because it is inconvenient, rather than because
-// it is unreachable, defeats the gate.
-const ALLOWED = {
-  hono: "SDK HTTP transport; stdio-only server never loads it",
-  "fast-uri": "via ajv, used by the SDK's HTTP schema validation; not on the stdio path",
-  "ip-address": "via express-rate-limit in the SDK's HTTP transport; never loaded"
-};
+// Add an entry only for a package that is provably unreachable (this server speaks
+// stdio only and never loads the SDK's HTTP transport), with the reason. Adding a
+// package because it is inconvenient defeats the gate.
+const ALLOWED = {};
 
 const BLOCKING = new Set(["high", "critical"]);
 
